@@ -1,0 +1,58 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	
+	<groupId>com.github.alessandrocolantoni</groupId>
+  	<artifactId>mom-bom</artifactId>
+  	<version>0.0.1-SNAPSHOT</version>
+  	<packaging>pom</packaging>
+  	
+  	
+  	
+  	<properties>
+  		<!-- Define the version of JBoss' Java EE 6 APIs we want to import. Any 
+		      dependencies from org.jboss.spec will have their version defined by this 
+		      BOM -->
+		<version.org.jboss.spec.jboss.javaee6>3.0.3.Final</version.org.jboss.spec.jboss.javaee6>
+		<version.org.drools>6.1.0.Final</version.org.drools>
+		<version.org.jbpm>6.1.0.Final</version.org.jbpm>
+		<version.hibernate>4.2.0.Final</version.hibernate>
+  	</properties>
+  	
+  	
+  	<dependencyManagement>
+  		<dependencies>
+			<!-- JBoss distributes a complete set of Java EE 6 APIs including a 
+			        Bill of Materials (BOM). A BOM specifies the versions of a "stack" (or a 
+			        collection) of artifacts. We use this here so that we always get the correct 
+			        versions of artifacts. Here we use the jboss-javaee-6.0 stack (you can read 
+			        this as the JBoss stack of the Java EE 6 APIs). You can actually use this 
+			        stack with any version of JBoss AS that implements Java EE 6, not just JBoss 
+			        AS 7! -->
+			<dependency>
+				<groupId>org.jboss.spec</groupId>
+				<artifactId>jboss-javaee-all-6.0</artifactId>
+				<version>${version.org.jboss.spec.jboss.javaee6}</version>
+			</dependency>
+			
+			<dependency>
+				<groupId>org.drools</groupId>
+				<artifactId>drools-bom</artifactId>
+				<type>pom</type>
+				<version>${version.org.drools}</version>
+				<scope>import</scope>
+			</dependency>
+			
+			<dependency>
+        		<groupId>org.jbpm</groupId>
+        		<artifactId>jbpm-bom</artifactId>
+        		<type>pom</type>
+        		<version>${version.org.jbpm}</version>
+        		<scope>import</scope>
+			</dependency>
+			
+			
+			
+			
+		</dependencies>		
+  	</dependencyManagement>
+</project>
