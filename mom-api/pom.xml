@@ -6,4 +6,33 @@
 	    <version>0.0.1-SNAPSHOT</version>
 	</parent>
   	<artifactId>mom-api</artifactId>
+  	
+  	<dependencies>
+  		 <dependency>
+			<groupId>org.jboss.spec</groupId>
+			<artifactId>jboss-javaee-all-6.0</artifactId>
+		</dependency>
+		<dependency>
+      			<groupId>org.slf4j</groupId>
+      			<artifactId>slf4j-api</artifactId>
+   		</dependency>
+   		<dependency>
+			<groupId>commons-beanutils</groupId>
+			<artifactId>commons-beanutils</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.hibernate</groupId>
+			<artifactId>hibernate-validator</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.hibernate</groupId>
+			<artifactId>hibernate-entitymanager</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.hibernate</groupId>
+		    <artifactId>hibernate-search</artifactId>
+   		</dependency>
+  	</dependencies>
 </project>
+
+

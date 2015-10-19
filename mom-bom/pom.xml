@@ -16,6 +16,8 @@
 		<version.org.drools>6.1.0.Final</version.org.drools>
 		<version.org.jbpm>6.1.0.Final</version.org.jbpm>
 		<version.hibernate>4.2.0.Final</version.hibernate>
+		<hibernate.core.version>4.2.0.Final</hibernate.core.version>
+		<slf4j.version>1.6.4</slf4j.version>
   	</properties>
   	
   	
@@ -50,8 +52,37 @@
         		<scope>import</scope>
 			</dependency>
 			
+			<dependency>
+      			<groupId>org.slf4j</groupId>
+      			<artifactId>slf4j-api</artifactId>
+      			<version>${slf4j.version}</version>
+    		</dependency>
 			
+			<dependency>
+				<groupId>commons-beanutils</groupId>
+				<artifactId>commons-beanutils</artifactId>
+				<version>1.9.2</version>
+			</dependency>
 			
+			<dependency>
+				<groupId>org.hibernate</groupId>
+				<artifactId>hibernate-validator</artifactId>
+				<version>${version.hibernate}</version>
+				<scope>provided</scope>
+			</dependency>
+			<dependency>
+			<groupId>org.hibernate</groupId>
+				<artifactId>hibernate-entitymanager</artifactId>
+				<version>${version.hibernate}</version>
+				<scope>provided</scope>
+			</dependency>
+			<dependency>
+				<groupId>org.hibernate</groupId>
+			    <artifactId>hibernate-search</artifactId>
+			    <version>${version.hibernate}</version>
+			    <scope>provided</scope>
+	   		</dependency>
+	   		
 			
 		</dependencies>		
   	</dependencyManagement>
