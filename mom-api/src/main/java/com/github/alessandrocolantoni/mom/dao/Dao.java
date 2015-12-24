@@ -2,6 +2,7 @@ package com.github.alessandrocolantoni.mom.dao;
 
 import java.io.Serializable;
 import java.util.Collection;
+import java.util.List;
 
 public interface Dao  extends Serializable{
 
@@ -16,7 +17,7 @@ public interface Dao  extends Serializable{
 	public <E> E findObjectByTemplate(E entity) throws DataAccessException;
 
 
-	public <E> Collection<E> findCollectionByQueryString(String queryString) throws DataAccessException;
+	public <E> List<E> findCollectionByQueryString(String queryString) throws DataAccessException;
 	
 	
 			
