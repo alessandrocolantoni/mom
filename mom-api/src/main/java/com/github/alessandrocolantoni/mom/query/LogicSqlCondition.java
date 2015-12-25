@@ -1,4 +1,5 @@
 package com.github.alessandrocolantoni.mom.query;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -7,9 +8,14 @@ import org.apache.commons.lang.StringUtils;
 
 
 
-public class LogicSqlCondition extends LogicCondition{
+public class LogicSqlCondition extends LogicCondition implements Serializable{
 
-    public LogicSqlCondition() {
+    /**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
+
+	public LogicSqlCondition() {
     }
 
     /**

@@ -2,11 +2,16 @@ package com.github.alessandrocolantoni.mom.common;
 
 
 
+import java.lang.annotation.Annotation;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.github.alessandrocolantoni.mom.dao.DataAccessException;
 
 public final class Utils {
 	
@@ -93,5 +98,48 @@ public final class Utils {
 
     }
     
+    /**
+     * 
+     * @param realClass class holding the pAttributeName
+     * @param pAttributeName attribute that holds the annotation on pAttributeName or on its getter
+     * @param annotationClass
+     * @return null if realClass does not have a field pAttributeName
+     * @throws Exception
+     */
+    public static <T extends Annotation, E> T  getAnnotation(Class<E> realClass, String pAttributeName, Class<T> annotationClass) throws Exception{
+		
+		T annotation =null;
+		
+		Field field=null;
+		try {
+			field = realClass.getDeclaredField(pAttributeName);
+		} catch (NoSuchFieldException e) {
+			/**
+			 * Nothing. pAttributeName is not a field of realClass
+			 * null will be returned
+			 */
+			//getLogger().warn(pAttributeName + "is not a field of "+realClass.toString());
+		}
+		
+		
+		if(field!=null){
+			annotation = field.getAnnotation(annotationClass);
+			if(annotation ==null){
+				Method getter = getGetter(realClass,pAttributeName);
+				annotation = getter.getAnnotation(annotationClass);
+			}
+		}
+		
+        return annotation;
+	}
 
+    
+    private static <E> Method getGetter(Class<E> realClass, String pAttributeName) throws Exception{
+		if(realClass==null || pAttributeName==null || pAttributeName.trim().equals("")){
+			throw new Exception("Error ::: realClass is null or pAttributeName is null or empty string " );
+		}
+	
+		Method getter = realClass.getDeclaredMethod("get"+pAttributeName.substring(0,1).toUpperCase()+pAttributeName.substring(1));
+		return getter;
+	}
 }
