@@ -2,7 +2,10 @@ package com.github.alessandrocolantoni.mom.dao.impl;
 
 
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -102,7 +105,7 @@ public class BaseJpaDao implements Dao {
 		E result= null;
 		
 		try {
-			List<E> temp  = findCollectionByTemplate(entity, 0, 1, null,null);
+			List<E> temp  = findCollectionByTemplate(entity, 0, 1, null);
 			
 			if (temp!=null && ! temp.isEmpty()) {
 				result = temp.iterator().next();
@@ -152,25 +155,13 @@ public class BaseJpaDao implements Dao {
 	
 	@Override
 	public <E> E findObjectByQueryString(String queryString) throws DataAccessException {
-		
-		E result;
-		try {
-			Query query = getEntityManager().createQuery(queryString);
-			result = jpaManager.getSingleResult(query);
-		
-		} catch (Exception e) {
-			getLogger().error(ERROR);
-            throw new DataAccessException(DATACCESSEXCEPTION ,e);
-		}
-		
-		return result;
+		return findObjectByQueryString(queryString, new HashMap<String,Object>());
 	}
 	
 	@Override
 	public <E> E findObjectByQueryString(String queryString, String parameterName, Object parameterValue) throws DataAccessException {
 		E result;
 		try {
-			
 			Map<String,Object> parameters = new HashMap<String,Object>();
 			parameters.put(parameterName, parameterValue);
 			result = findObjectByQueryString(queryString, parameters);
@@ -183,11 +174,8 @@ public class BaseJpaDao implements Dao {
 	
 	@Override
 	public <E> E findObjectByQueryString(String queryString, Map<String,Object> parameters) throws DataAccessException {
-		
 		try {
-			//queryString = translateInAll(queryString, parameters);
 			Query query = getEntityManager().createQuery(queryString);
-
 			jpaManager.setQueryParameters(query, parameters);
 			E result = jpaManager.getSingleResult(query);
 			return result;
@@ -195,11 +183,46 @@ public class BaseJpaDao implements Dao {
 			getLogger().error(ERROR);
             throw new DataAccessException(DATACCESSEXCEPTION ,e);
 		}
-		
+	}
+	
+	
+	@Override
+	public <E> E findObjectByNativeQueryString(String queryString) throws DataAccessException {
+		return findObjectByNativeQueryString(queryString, new HashMap<String,Object>());
 	}
 	
 	@Override
-	public <E> List<E> findCollectionByTemplate(E entity, Integer firstResult, Integer maxResults, String orderingField, Boolean asc) throws DataAccessException{
+	public <E> E findObjectByNativeQueryString(String queryString, String parameterName, Object parameterValue) throws DataAccessException {
+		E result;
+		try {
+			
+			Map<String,Object> parameters = new HashMap<String,Object>();
+			parameters.put(parameterName, parameterValue);
+			result = findObjectByNativeQueryString(queryString, parameters);
+		} catch (Exception e) {
+			getLogger().error(ERROR);
+            throw new DataAccessException(DATACCESSEXCEPTION ,e);
+		}
+		return result;
+	}
+	
+	@Override
+	public <E> E findObjectByNativeQueryString(String queryString, Map<String,Object> parameters) throws DataAccessException {
+		try {
+			Query query = getEntityManager().createNativeQuery(queryString);
+			jpaManager.setQueryParameters(query, parameters);
+			E result = jpaManager.getSingleResult(query);
+			return result;
+		} catch (Exception e) {
+			getLogger().error(ERROR);
+            throw new DataAccessException(DATACCESSEXCEPTION ,e);
+		}
+	}
+	
+	
+	
+	@Override
+	public <E> List<E> findCollectionByTemplate(E entity, Integer firstResult, Integer maxResults, String orderBy) throws DataAccessException{
         
 		
         try {
@@ -235,7 +258,7 @@ public class BaseJpaDao implements Dao {
 		    	queryString +=" WHERE "+whereCondition;
 		    }
 		    
-		    queryString = buildOrderBy(queryString,  orderingField,  asc);
+		    queryString = addOrderBy(queryString,  orderBy);
 		    
 		    
 		    Query query = getEntityManager().createQuery(queryString);
@@ -255,229 +278,111 @@ public class BaseJpaDao implements Dao {
 	@Override
 	public <E> List<E> findCollectionByTemplate(E entity) throws DataAccessException{
         
-		return  findCollectionByTemplate(entity, null, null, null,null);
+		return  findCollectionByTemplate(entity, null, null, null);
     }
 	
 	
 	@Override
-    public <E> List<E>  findCollectionByTemplate(E entity, String orderingField, Boolean asc) throws DataAccessException{
+    public <E> List<E>  findCollectionByTemplate(E entity, String orderBy) throws DataAccessException{
         
-    	return  findCollectionByTemplate(entity, null, null, orderingField,asc);
+    	return  findCollectionByTemplate(entity, null, null, orderBy);
     }
-    
+	
+	@Override
+    public <E> List<E>  findCollectionByTemplate(E entity, Integer firstResult, Integer maxResults) throws DataAccessException{
+        
+    	return  findCollectionByTemplate(entity, firstResult, maxResults, null);
+    }
+   
+	
+	@Override
+	public  <E> List<E> findCollectionByNullFields(Class<E> realClass, String[] nullFields) throws DataAccessException{
+         try {
+			String queryString = "SELECT c FROM " + realClass.getSimpleName() + " c "; 
+			String whereCondition="";
+			if(nullFields!=null){
+				for (int i = 0; i< nullFields.length; i++){
+					whereCondition += " c." + nullFields[i] + " IS  NULL AND"; 
+				}
+			}
+			if(!whereCondition.equals("")){
+				whereCondition = whereCondition.substring(0, whereCondition.lastIndexOf("AND"));
+				queryString += " WHERE "+whereCondition;
+			}	
+			Query query = getEntityManager().createQuery(queryString);
+			return jpaManager.getResultList(query);
+		} catch (Exception e) {
+			getLogger().error(ERROR);
+            throw new DataAccessException(DATACCESSEXCEPTION ,e);		
+        }
+
+    }
+	
+	
     
 	@Override 
 	public <E> List<E> findCollectionByLogicCondition(Class<E> realClass, LogicCondition logicCondition) throws DataAccessException{
-		List<E> result;
-        try{
-            
-        	Query query = logicConditionJqlBuilder.createQuery(null, null, realClass,  logicCondition, null,  null);;
-        	
-        	result = jpaManager.getResultList(query);
-
-        }catch (Exception e) {
-			getLogger().error(ERROR);
-            throw new DataAccessException(DATACCESSEXCEPTION ,e);
-        }
-        return result;
+        return findCollectionByLogicCondition(null, null, realClass, logicCondition, null, null, null, null);
     }
 	
 	@Override
-	public <E> List<E> findCollectionByLogicCondition(Class<E> realClass,LogicCondition logicCondition,String orderingField, Boolean asc,Integer firstResult, Integer maxResults) throws DataAccessException{
-		List<E> result = null;
-        
-        try {
-//			String orderBy = null;
-//			if(orderingField!=null && !orderingField.trim().equals("")){
-//				if(asc!=null){
-//					if(asc){
-//						orderBy=orderingField+" ASC";
-//					}else{
-//						orderBy=orderingField+" DESC";
-//					}
-//				}
-//			}
-//			result = findCollectionByLogicCondition(realClass, logicCondition, orderBy, firstResult, maxResults);
-        	orderingField = buildAsc(orderingField, asc);
-			result = findCollectionByLogicCondition(realClass, logicCondition, orderingField, firstResult, maxResults);
-			
-		} catch (Exception e) {
-			getLogger().error(ERROR);
-            throw new DataAccessException(DATACCESSEXCEPTION ,e);    
-		}
-        return result;
-    }
-	
-	
 	public <E> List<E> findCollectionByLogicCondition(String[]selectFields, Class<E> realClass, LogicCondition logicCondition) throws DataAccessException{
-        List<E> result;
-        try{
-            
-        	Query query = logicConditionJqlBuilder.createQuery(null, selectFields, realClass,  logicCondition, null,  null);
-        	result = jpaManager.getResultList(query);
-
-        } catch (Exception e) {
-        	getLogger().error(ERROR);
-            throw new DataAccessException(DATACCESSEXCEPTION ,e);    
-        }
-        return result;
+        return findCollectionByLogicCondition(null, selectFields, realClass, logicCondition, null, null, null, null);
     }
 	
+	@Override
 	public <E> List<E> findCollectionByLogicCondition(String[]selectFields, Class<E> realClass, LogicCondition logicCondition, String orderBy) throws DataAccessException{
-		List<E>  result;
-        try{
-            
-        	Query query = logicConditionJqlBuilder.createQuery(null, selectFields, realClass,  logicCondition, orderBy,  null);
-        	result = jpaManager.getResultList(query);
-
-        } catch (Exception e) {
-        	getLogger().error(ERROR);
-            throw new DataAccessException(DATACCESSEXCEPTION ,e);    
-        }
-        return result;
+        return findCollectionByLogicCondition(null, selectFields, realClass, logicCondition, orderBy, null, null, null);
     }
 	
+	@Override
 	public <E> List<E> findCollectionByLogicCondition(Class<E> realClass, LogicCondition logicCondition, String orderBy) throws DataAccessException{
-		List<E> result;
-        try{
-            Query query = logicConditionJqlBuilder.createQuery(null, null, realClass,  logicCondition, orderBy,  null);
-            
-        	result = jpaManager.getResultList(query);
-        } catch (Exception e) {
-        	getLogger().error(ERROR);
-            throw new DataAccessException(DATACCESSEXCEPTION ,e);    
-        }
-        return result;
+        return findCollectionByLogicCondition(null, null, realClass, logicCondition, orderBy, null, null, null);
     }
 	
+	@Override
 	public <E> List<E> findCollectionByLogicCondition(Boolean distinct, String[]selectFields, Class<E> realClass, LogicCondition logicCondition, String orderBy) throws DataAccessException{
-        List<E> result;
-        try{
-            
-        	Query query = logicConditionJqlBuilder.createQuery(distinct, selectFields, realClass,  logicCondition, orderBy,  null);
-        	result = jpaManager.getResultList(query);
-
-        } catch (Exception e) {
-        	getLogger().error(ERROR);
-            throw new DataAccessException(DATACCESSEXCEPTION ,e);    
-        }
-        return result;
+        return findCollectionByLogicCondition(distinct, selectFields, realClass, logicCondition, orderBy, null, null, null);
+    }
+	
+	@Override
+	public <E> List<E> findCollectionByLogicCondition(Boolean distinct,String[] selectFields, Class<E> realClass, LogicCondition logicCondition, String orderBy,Integer firstResult, Integer maxResults) throws DataAccessException{
+        return findCollectionByLogicCondition(distinct, selectFields, realClass, logicCondition, orderBy, null, firstResult, maxResults);
+    }
+	
+	@Override
+	public <E> List<E> findCollectionByLogicCondition(String[] selectFields, Class<E> realClass, LogicCondition logicCondition, String orderBy,Integer firstResult, Integer maxResults) throws DataAccessException{
+        return findCollectionByLogicCondition(null, selectFields, realClass, logicCondition, orderBy, null, firstResult, maxResults);
+    }
+	
+	@Override
+	public <E> List<E> findCollectionByLogicCondition(Class<E> realClass, LogicCondition logicCondition, String orderBy,Integer firstResult, Integer maxResults) throws DataAccessException{
+        return findCollectionByLogicCondition(null, null, realClass, logicCondition, orderBy, null, firstResult, maxResults);
     }
 
-	/**
-	 * findCollectionByLogicCondition con todos los parametros: 
-	 * @param distinct
-	 * @param selectFields
-	 * @param realClass
-	 * @param logicCondition
-	 * @param orderBy
-	 * @param groupBy
-	 * @param firstResult
-	 * @param maxResults
-	 * @return
-	 * @throws DataAccessException
-	 */
+	@Override
+	public <E> List<E> findCollectionByLogicCondition(Boolean distinct,Class<E> realClass, LogicCondition logicCondition, String orderBy) throws DataAccessException{
+        return findCollectionByLogicCondition(distinct, null, realClass, logicCondition, orderBy, null, null, null);
+    }
+	
+	@Override
+	public <E> List<E> findCollectionByLogicCondition(Boolean distinct, Class<E> realClass, LogicCondition logicCondition) throws DataAccessException{
+       return findCollectionByLogicCondition(distinct, null,  realClass,  logicCondition, null, null, null, null);
+    }
+	
+	@Override
+	public <E> List<E> findCollectionByLogicCondition(Boolean distinct, String[]selectFields, Class<E> realClass, LogicCondition logicCondition) throws DataAccessException{
+        return findCollectionByLogicCondition(distinct, selectFields,  realClass,  logicCondition, null, null, null, null);
+    }
+	
+	
+	@Override
 	public <E> List<E> findCollectionByLogicCondition(Boolean distinct,String[] selectFields, Class<E> realClass, LogicCondition logicCondition, String orderBy,String[] groupBy, Integer firstResult, Integer maxResults) throws DataAccessException{
         List<E> result;
         try{
         	Query query = logicConditionJqlBuilder.createQuery(distinct,selectFields, realClass, logicCondition, orderBy, groupBy);
         	jpaManager.setFirstAndMaxResults(query, firstResult, maxResults);
          	result = jpaManager.getResultList(query);
-
-        } catch (Exception e) {
-        	getLogger().error(ERROR);
-            throw new DataAccessException(DATACCESSEXCEPTION ,e);    
-        }
-        return result;
-    }
-	
-	public <E> List<E> findCollectionByLogicCondition(Boolean distinct,String[] selectFields, Class<E> realClass, LogicCondition logicCondition, String orderBy,Integer firstResult, Integer maxResults) throws DataAccessException{
-		List<E> result;
-        try{
-        	Query query = logicConditionJqlBuilder.createQuery(distinct, selectFields, realClass,  logicCondition, orderBy,  null);
-        	
-            jpaManager.setFirstAndMaxResults(query, firstResult, maxResults);
-        	result =jpaManager.getResultList(query);
-
-        } catch (Exception e) {
-        	getLogger().error(ERROR);
-            throw new DataAccessException(DATACCESSEXCEPTION ,e);    
-        }
-        return result;
-    }
-	
-	public <E> List<E> findCollectionByLogicCondition(String[] selectFields, Class<E> realClass, LogicCondition logicCondition, String orderBy,Integer firstResult, Integer maxResults) throws DataAccessException{
-        List<E> result;
-        try{
-        	Query query = logicConditionJqlBuilder.createQuery(null, selectFields, realClass,  logicCondition, orderBy,  null);
-        	
-            
-        	jpaManager.setFirstAndMaxResults(query, firstResult, maxResults);
-
-        	result = jpaManager.getResultList(query);
-
-        } catch (Exception e) {
-        	getLogger().error(ERROR);
-            throw new DataAccessException(DATACCESSEXCEPTION ,e);    
-        }
-        return result;
-    }
-
-	
-	public <E> List<E> findCollectionByLogicCondition(Class<E> realClass, LogicCondition logicCondition, String orderBy,Integer firstResult, Integer maxResults) throws DataAccessException{
-		List<E> result;
-        try{
-        	Query query = logicConditionJqlBuilder.createQuery(null, null, realClass,  logicCondition, orderBy,  null);
-        	
-            
-        	jpaManager.setFirstAndMaxResults(query, firstResult, maxResults);
-        	
-        	result = jpaManager.getResultList(query);
-
-        } catch (Exception e) {
-        	getLogger().error(ERROR);
-            throw new DataAccessException(DATACCESSEXCEPTION ,e);    
-        }
-        return result;
-    }
-
-	public <E> List<E> findCollectionByLogicCondition(Boolean distinct,Class<E> realClass, LogicCondition logicCondition, String orderBy) throws DataAccessException{
-		List<E> result;
-        try{
-            
-        	Query query = logicConditionJqlBuilder.createQuery(distinct, null, realClass,  logicCondition, orderBy,  null);
-        	
-        	result =jpaManager.getResultList(query);
-
-        } catch (Exception e) {
-        	getLogger().error(ERROR);
-            throw new DataAccessException(DATACCESSEXCEPTION ,e);    
-        }
-        return result;
-    }
-	
-	public <E> List<E> findCollectionByLogicCondition(Boolean distinct, Class<E> realClass, LogicCondition logicCondition) throws DataAccessException{
-        List<E> result;
-        try{
-            
-        	Query query = logicConditionJqlBuilder.createQuery(distinct, null, realClass,  logicCondition, null,  null);
-        	
-        	result = jpaManager.getResultList(query);
-
-        } catch (Exception e) {
-        	getLogger().error(ERROR);
-            throw new DataAccessException(DATACCESSEXCEPTION ,e);    
-        }
-        return result;
-    }
-	
-	public <E> List<E> findCollectionByLogicCondition(Boolean distinct, String[]selectFields, Class<E> realClass, LogicCondition logicCondition) throws DataAccessException{
-        List<E> result;
-        try{
-            
-        	Query query = logicConditionJqlBuilder.createQuery(distinct, selectFields, realClass,  logicCondition, null,  null);
-        	
-        	result = jpaManager.getResultList(query);
 
         } catch (Exception e) {
         	getLogger().error(ERROR);
@@ -495,20 +400,22 @@ public class BaseJpaDao implements Dao {
 		return findCollectionByQueryString( queryString,  new HashMap<String,Object>(),  null,  null);
 	}
 	
+	@Override
 	public <E> List<E> findCollectionByQueryString(String queryString, Integer firstResult, Integer maxResults) throws DataAccessException {
 		return findCollectionByQueryString( queryString,  new HashMap<String,Object>(),  firstResult,  maxResults);
 	}
 	
+	@Override
 	public <E> List<E> findCollectionByQueryString(String queryString, String parameterName, Object parameterValue) throws DataAccessException {
 		return  findCollectionByQueryString(queryString,  parameterName,  parameterValue, null, null);
 	}
 	
-	
+	@Override
 	public <E> List<E> findCollectionByQueryString(String queryString, Map<String,Object> parameters) throws DataAccessException {
 		return findCollectionByQueryString( queryString,  parameters, null, null);
 	}
 	
-	
+	@Override
 	public <E> List<E> findCollectionByQueryString(String queryString, String parameterName, Object parameterValue, Integer firstResult, Integer maxResults) throws DataAccessException {
 		List<E> result;
 		try {
@@ -523,8 +430,7 @@ public class BaseJpaDao implements Dao {
 		return result;
 	}
 	
-	
-	
+	@Override
 	public <E> List<E> findCollectionByQueryString(String queryString, Map<String,Object> parameters, Integer firstResult, Integer maxResults) throws DataAccessException {
 		
 		List<E> result;
@@ -543,32 +449,155 @@ public class BaseJpaDao implements Dao {
 		return result;
 	}
 	
+	////////////////////////////////
 	
-	
-	
-	
-	private String buildAsc( String orderingField, Boolean asc)throws  Exception{
-		if(orderingField!=null && !orderingField.trim().equals("")){
-	    	if(asc!=null){
-				
-				if(asc){
-					orderingField=orderingField+" ASC";
-				}else{
-					orderingField=orderingField+" DESC";
-				}
-				
-			}
-	    	
-	    }
-		return orderingField;
+	@Override
+	public <E> List<E> findCollectionByNativeQueryString(String queryString) throws DataAccessException {
+		return findCollectionByNativeQueryString( queryString,  new HashMap<String,Object>(),  null,  null);
 	}
-	private String buildOrderBy(String queryString, String orderingField, Boolean asc) throws  Exception{
+	
+	@Override
+	public <E> List<E> findCollectionByNativeQueryString(String queryString, Integer firstResult, Integer maxResults) throws DataAccessException {
+		return findCollectionByNativeQueryString( queryString,  new HashMap<String,Object>(),  firstResult,  maxResults);
+	}
+	
+	@Override
+	public <E> List<E> findCollectionByNativeQueryString(String queryString, String parameterName, Object parameterValue) throws DataAccessException {
+		return  findCollectionByNativeQueryString(queryString, parameterName, parameterValue, null, null);
+	}
+	
+	@Override
+	public <E> List<E> findCollectionByNativeQueryString(String queryString, Map<String,Object> parameters) throws DataAccessException {
+		return findCollectionByNativeQueryString(queryString, parameters, null, null);
+	}
+	
+	@Override
+	public <E> List<E> findCollectionByNativeQueryString(String queryString, String parameterName, Object parameterValue, Integer firstResult, Integer maxResults) throws DataAccessException {
+		List<E> result;
+		try {
+			
+			Map<String,Object> parameters = new HashMap<String,Object>();
+			parameters.put(parameterName, parameterValue);
+			result = findCollectionByNativeQueryString(queryString, parameters,firstResult,maxResults);
+		} catch (Exception e) {
+			getLogger().error(ERROR);
+            throw new DataAccessException(DATACCESSEXCEPTION ,e);		}
+		return result;
+	}
+	
+	@Override
+	public <E> List<E> findCollectionByNativeQueryString(String queryString, Map<String,Object> parameters,Integer firstResult, Integer maxResults) throws DataAccessException {
 		
-		if(orderingField!=null && !orderingField.trim().equals("")){
-			orderingField = buildAsc(orderingField, asc);
-			queryString += " ORDER BY "+ orderingField;
+		List<E> result;
+		try {
+			Query query = getEntityManager().createNativeQuery(queryString);
+
+			jpaManager.setQueryParameters(query, parameters);
+			jpaManager.setFirstAndMaxResults(query, firstResult, maxResults);
+			result = jpaManager.getResultList(query);
+
+		} catch (Exception e) {
+			getLogger().error(ERROR);
+            throw new DataAccessException(DATACCESSEXCEPTION ,e);		
+		}
+		return result;
+	}
+	
+	
+	
+	private String addOrderBy(String queryString, String orderingString) throws  Exception{
+		
+		if(orderingString!=null && !orderingString.trim().equals("")){
+			queryString += " ORDER BY "+ orderingString;
 		}
 		return queryString;
 	}
+	
+	@Override
+	public <E,T> List<E> findCollectionByOrValues(Class<E> realClass,String pAttributeName,List<T> valuesCollection) throws DataAccessException{
+		List<E> result = new ArrayList<E>();
+        
+    	try {
+			if(valuesCollection != null && !valuesCollection.isEmpty()){
+				Map<String,Object> parameters = new HashMap<String,Object>();
+				String queryString = "SELECT c FROM " + realClass.getSimpleName() + " c  WHERE "; 
+				
+				int i=0;
+				Iterator<T> iterator = valuesCollection.iterator();
+			    while (iterator.hasNext()){
+			        
+			       
+			        T value = iterator.next();
+			        if (value!=null){
+			        	String parameter ="parameter"+i; 
+			            queryString += " c." + pAttributeName + " = :" + parameter + " OR"; 
+			        	parameters.put(parameter,value);
+			        	i++;
+			        }else{
+			        	 queryString += " c." + pAttributeName + "IS NULL OR";
+			        }
+			    }
+			    queryString = queryString.substring(0, queryString.lastIndexOf("OR")); 
+			    
+			    Query query = getEntityManager().createQuery(queryString);
+				
+			    jpaManager.setQueryParameters(query, parameters);
+			    result = jpaManager.getResultList(query);
+			}
+		} catch (Exception e) {
+			getLogger().error(ERROR);
+            throw new DataAccessException(DATACCESSEXCEPTION ,e);	
+        }
+        return result;
+    }
+	
+	@Override
+	public <E,T> List<E> findCollectionByFieldInCollection(Class<E> realClass,String pAttributeName, List<T> valuesCollection) throws DataAccessException{
+		
+		List<E> result = new ArrayList<E>();
+		try {
+			if(valuesCollection!=null && !valuesCollection.isEmpty()){
+				Map<String,Object> parameters = new HashMap<String,Object>();
+				String queryString = "SELECT c FROM " + realClass.getSimpleName() + " c "; 
+				queryString += " WHERE c." +pAttributeName+" IN (:parameter)";
+				parameters.put("parameter",valuesCollection);
+				Query query = getEntityManager().createQuery(queryString);
+				jpaManager.setQueryParameters(query, parameters);
+				result = jpaManager.getResultList(query);
+			}
+		} catch (Exception e) {
+			getLogger().error(ERROR);
+            throw new DataAccessException(DATACCESSEXCEPTION ,e);
+        }
+        return result;
+    }
+	
+	@Override
+	public <E> List<E> searchValueInFields(Class<E> realClass, String[] pAttributeNames, Object value) throws DataAccessException{
+		List<E> result = new ArrayList<E>();
+        try {
+			if (pAttributeNames!=null && pAttributeNames.length>0  && value!=null) {
+				
+				Map<String,Object> parameters = new HashMap<String,Object>();
+				parameters.put("parameter", value);
+				
+				String queryString = "SELECT c FROM " + realClass.getSimpleName() + " c  WHERE "; 
+
+				
+			    for (int i=0; i<pAttributeNames.length;i++ ){
+			    	queryString += " c." + pAttributeNames[i] + " LIKE concat('%',:parameter,'%') OR ";
+			    }
+			    
+			    queryString = queryString.substring(0, queryString.lastIndexOf("OR"));
+				Query query = getEntityManager().createQuery(queryString);
+				jpaManager.setQueryParameters(query, parameters);
+				result = jpaManager.getResultList(query);
+			}
+		} catch (Exception e) {
+			getLogger().error(ERROR);
+            throw new DataAccessException(DATACCESSEXCEPTION ,e);
+        }
+        return result;
+    }
 	
 }

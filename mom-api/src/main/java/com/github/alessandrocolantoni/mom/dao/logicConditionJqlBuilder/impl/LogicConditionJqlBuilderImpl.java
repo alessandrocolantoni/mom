@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 
 import javax.enterprise.context.Dependent;
@@ -62,27 +61,11 @@ public  class LogicConditionJqlBuilderImpl implements LogicConditionJqlBuilder {
 		this.logger = logger;
 	}
 	
-	@Deprecated
-	@Override
-	public <E> Query createQuery(Boolean distinct, String[] selectFields, Class<E> realClass,  LogicCondition logicCondition, String orderBy) throws DataAccessException{
-		
-		return createQuery(distinct, selectFields, realClass,  logicCondition, orderBy,  null);
-		
-	}
 	
 	
-	@Deprecated
-	@Override
-	public <E> Query createQuery(Class<E> realClass, LogicCondition logicCondition) throws DataAccessException{
-		
-		return createQuery(null, null, realClass,  logicCondition,null);
-		
-	}
-	@Deprecated
-	@Override
-	public <E> Query createQuery(String[] selectFields, Class<E> realClass,  LogicCondition logicCondition) throws DataAccessException{
-		return createQuery(null, selectFields, realClass,  logicCondition, null);
-	}
+	
+	
+	
 	
 	@Override
 	public <E> Query createQuery(Boolean distinct, String[] selectFields, Class<E> realClass,  LogicCondition logicCondition, String orderBy, String[] groupBy) throws DataAccessException{
