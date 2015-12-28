@@ -14,7 +14,8 @@ public interface JpaManager extends Serializable {
 	public <E> E getSingleResult(Query query) throws DataAccessException;
 	public void setQueryParameters(Query query, Map<String, Object> parameters) throws DataAccessException;
 	public <E> boolean isReferenceCollection(Class<E> pInstanceClass, String pAttributeName) throws DataAccessException;
-	public <E> Class<E> getEntityClass(E entity) throws DataAccessException;
+	public Class<?> getEntityClass(Object entity) throws DataAccessException;
 	public void setFirstAndMaxResults(Query query,  Integer firstResult, Integer maxResults) throws DataAccessException;
+	public <E> Class<?> getClassFromPath(Class<E> realClass, String path) throws Exception;
 
 }

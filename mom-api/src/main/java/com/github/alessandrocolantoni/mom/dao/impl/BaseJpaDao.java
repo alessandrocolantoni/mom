@@ -2,6 +2,14 @@ package com.github.alessandrocolantoni.mom.dao.impl;
 
 
 
+
+
+
+
+import it.aco.mandragora.query.LogicSqlCondition;
+
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -11,8 +19,13 @@ import java.util.Map;
 
 import javax.enterprise.context.Dependent;
 import javax.inject.Inject;
+import javax.persistence.EmbeddedId;
 import javax.persistence.EntityManager;
 import javax.persistence.EntityNotFoundException;
+import javax.persistence.ManyToMany;
+import javax.persistence.ManyToOne;
+import javax.persistence.OneToMany;
+import javax.persistence.OneToOne;
 import javax.persistence.Query;
 import javax.persistence.Transient;
 
@@ -24,7 +37,9 @@ import com.github.alessandrocolantoni.mom.common.Utils;
 import com.github.alessandrocolantoni.mom.dao.Dao;
 import com.github.alessandrocolantoni.mom.dao.DataAccessException;
 import com.github.alessandrocolantoni.mom.dao.jpaManager.JpaManager;
+import com.github.alessandrocolantoni.mom.dao.jpaManager.impl.EntityInfo;
 import com.github.alessandrocolantoni.mom.dao.logicConditionJqlBuilder.LogicConditionJqlBuilder;
+import com.github.alessandrocolantoni.mom.objectsQuery.javaObjectsQuery.JavaObjectsQuery;
 import com.github.alessandrocolantoni.mom.query.LogicCondition;
 
 @Dependent
@@ -41,6 +56,9 @@ public class BaseJpaDao implements Dao {
 	
 	@Inject 
 	private JpaManager jpaManager;
+	
+	@Inject
+	private JavaObjectsQuery javaObjectsQuery;
 	
 //	protected abstract Logger getLogger();
 //	protected abstract EntityManager getEntityManager(); 
@@ -229,11 +247,11 @@ public class BaseJpaDao implements Dao {
         	PropertyUtilsBean propertyUtilsBean = BeanUtilsBean.getInstance().getPropertyUtils();
         	
         	
-        	
+
 			Map<String, Object> m = propertyUtilsBean.describe(entity);
 			Map<String, Object> parameters = new HashMap<String, Object>();
 			
-			Class<E> entityClass = jpaManager.getEntityClass(entity);
+			Class<?> entityClass = jpaManager.getEntityClass(entity);
 			
 			String queryString = "SELECT c FROM " + jpaManager.getEntityClass(entity).getSimpleName() + " c ";
 			String whereCondition ="";
@@ -417,7 +435,7 @@ public class BaseJpaDao implements Dao {
 	
 	@Override
 	public <E> List<E> findCollectionByQueryString(String queryString, String parameterName, Object parameterValue, Integer firstResult, Integer maxResults) throws DataAccessException {
-		List<E> result;
+		List<E> result = new ArrayList<E>();
 		try {
 			
 			Map<String,Object> parameters = new HashMap<String,Object>();
@@ -596,8 +614,123 @@ public class BaseJpaDao implements Dao {
 		} catch (Exception e) {
 			getLogger().error(ERROR);
             throw new DataAccessException(DATACCESSEXCEPTION ,e);
-        }
+         }
         return result;
     }
+	
+	@Override
+	public <E> List<E> getCollectionOfStoredItemsNotInBean(Object pInstance, String pAttributeName) throws DataAccessException{
+		List<E> result = new ArrayList<E>();
+        try {
+        	
+        	result=getCollectionOfStoredItemsInOrNotInBean( pInstance,  pAttributeName, true);
+
+		} catch (Exception e) {
+			getLogger().error(ERROR);
+            throw new DataAccessException(DATACCESSEXCEPTION ,e);
+        }
+        return result;
+	}
+	@Override
+	public <E> List<E>  getCollectionOfStoredItemsInBean(Object pInstance, String pAttributeName) throws DataAccessException{
+		List<E> result = new ArrayList<E>();
+        try {
+			
+        	result=getCollectionOfStoredItemsInOrNotInBean( pInstance,  pAttributeName, false);
+
+		} catch (Exception e) {
+			getLogger().error(ERROR);
+            throw new DataAccessException(DATACCESSEXCEPTION ,e);
+		}
+        return result;
+	 }
+	
+	private <EpAttribute,EpInstance> List<EpAttribute> getCollectionOfStoredItemsInOrNotInBean(EpInstance pInstance, String pAttributeName, boolean notInBean) throws Exception{
+		List<EpAttribute> result = new ArrayList<EpAttribute>();
+		if(pAttributeName==null || pAttributeName.trim().equals("")){
+			getLogger().error(ERROR);
+			throw new DataAccessException("pAttributeName can't be null or empty or blank chacarcters string");
+		}
+		
+		PropertyUtilsBean propertyUtilsBean = BeanUtilsBean.getInstance().getPropertyUtils();
+		
+		@SuppressWarnings("unchecked")
+		Class<EpInstance> pInstanceClass = (Class<EpInstance>) jpaManager.getEntityClass(pInstance);
+		@SuppressWarnings("unchecked")
+		Class<EpAttribute> pAttributeClass = (Class<EpAttribute>) jpaManager.getClassFromPath(pInstanceClass, pAttributeName);
+		
+		EntityInfo<EpAttribute> pAttributeEntityInfo =  new EntityInfo<EpAttribute>(pAttributeClass);
+		
+		Field pAttributeIdField = pAttributeEntityInfo.getIdField();
+		
+		@SuppressWarnings("unchecked")
+		Collection<EpAttribute> pAttributeCollection = (Collection<EpAttribute>) propertyUtilsBean.getProperty(pInstance, pAttributeName);
+		Collection<?> pAttributeIds = null;
+		if(pAttributeCollection!=null && !pAttributeCollection.isEmpty()){
+			pAttributeIds = javaObjectsQuery.selectFieldFromCollection(pAttributeCollection, pAttributeIdField.getName());
+		}
+		
+		String pAttributeIdFieldName=pAttributeIdField.getName(); 
+		
+		Map<String,Object> parameters = new HashMap<String,Object>();
+		parameters.put("param0", pInstance);
+		
+		String queryString ="SELECT bbb FROM "+pInstanceClass.getSimpleName()+" a join a."+pAttributeName+" bbb  WHERE a= :param0 " ;
+
+		if(pAttributeIds!=null){
+			if(notInBean){
+				queryString += "AND NOT EXISTS ";
+			}else{
+				queryString += "AND EXISTS ";
+			}
+				
+			queryString += "(SELECT 1 FROM "+pAttributeClass.getSimpleName()+" c WHERE ";
+			queryString+=" bbb."+pAttributeIdFieldName+" = c."+pAttributeIdFieldName+ " AND ";
+			queryString +="(";
+			Iterator<?> iterator = pAttributeIds.iterator();
+			int paramIndex=1;
+			while(iterator.hasNext()){
+				String param = "param"+paramIndex;
+				Object pAttributeId = iterator.next();
+				queryString+=" (c."+pAttributeIdFieldName+" = :"+param;
+				queryString +=")";
+				parameters.put(param, pAttributeId);
+				if(iterator.hasNext()){
+					queryString+=" OR ";
+				}
+				paramIndex++;
+			}
+			queryString +=") )";
+		}
+		
+		result = findCollectionByQueryString(queryString, parameters);
+        return result;
+	 }
+	
+	@Override
+	public  <E> List<E>  getStoredCollection(Object pInstance, String pAttributeName) throws DataAccessException{
+		List<E> result = new ArrayList<E>();
+        
+        try {
+			if(pAttributeName==null || pAttributeName.trim().equals("")){
+			    getLogger().error(ERROR);
+				throw new DataAccessException("pAttributeName can't be null or empty or blank chacarcters string");
+			}
+			
+			Class<?> pInstanceClass = jpaManager.getEntityClass(pInstance);
+			
+			String queryString ="SELECT bbb FROM "+pInstanceClass.getSimpleName()+" a join a."+pAttributeName+" bbb  WHERE a= :param " ;
+			
+			result = findCollectionByQueryString(queryString, "param", pInstance);
+			
+		} catch (Exception e) {
+			getLogger().error(ERROR);
+            throw new DataAccessException(DATACCESSEXCEPTION ,e);
+		}
+        
+        return result;
+    }
+	
+	
 	
 }

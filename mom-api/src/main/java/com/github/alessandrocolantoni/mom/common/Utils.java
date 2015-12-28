@@ -11,8 +11,6 @@ import java.lang.reflect.Type;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.github.alessandrocolantoni.mom.dao.DataAccessException;
-
 public final class Utils {
 	
 	
@@ -79,20 +77,17 @@ public final class Utils {
         return result;
     }
     
-    @SuppressWarnings("rawtypes")
-	public static Class getGenericClass(Type type) throws Exception{
-    	Class genericClass = null;
-    	try {
-			if(type instanceof ParameterizedType){
-			    ParameterizedType parameterizedType = (ParameterizedType) type;
-			    Type[] fieldArgTypes = parameterizedType.getActualTypeArguments();
-			    for(Type fieldArgType : fieldArgTypes){
-			    	genericClass = (Class) fieldArgType;
-			        log.debug("genericClass = " + genericClass);
-			    }
-			}
-		} catch (Exception e) {
-			throw new Exception("Exception thrown in Utils.getGenericClass(Type type): " + e.toString(),e);
+    
+	@SuppressWarnings("unchecked")
+	public static <T> Class<T> getGenericClass(Type type) throws Exception{
+    	Class<T> genericClass = null;
+    	if(type instanceof ParameterizedType){
+		    ParameterizedType parameterizedType = (ParameterizedType) type;
+		    Type[] fieldArgTypes = parameterizedType.getActualTypeArguments();
+		    for(Type fieldArgType : fieldArgTypes){
+		    	genericClass = (Class<T>) fieldArgType;
+		        log.debug("genericClass = " + genericClass);
+		    }
 		}
     	return genericClass;
 
@@ -134,7 +129,7 @@ public final class Utils {
 	}
 
     
-    private static <E> Method getGetter(Class<E> realClass, String pAttributeName) throws Exception{
+    public static <E> Method getGetter(Class<E> realClass, String pAttributeName) throws Exception{
 		if(realClass==null || pAttributeName==null || pAttributeName.trim().equals("")){
 			throw new Exception("Error ::: realClass is null or pAttributeName is null or empty string " );
 		}
@@ -142,4 +137,6 @@ public final class Utils {
 		Method getter = realClass.getDeclaredMethod("get"+pAttributeName.substring(0,1).toUpperCase()+pAttributeName.substring(1));
 		return getter;
 	}
+    
+   
 }

@@ -1,10 +1,12 @@
 package com.github.alessandrocolantoni.mom.dao.jpaManager.impl;
 
+import java.lang.reflect.Field;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
-import javax.inject.Inject;
 import javax.persistence.ManyToMany;
 import javax.persistence.NoResultException;
 import javax.persistence.OneToMany;
@@ -132,8 +134,7 @@ public class JpaManagerImpl implements JpaManager {
 	
 	
 	@Override
-	@SuppressWarnings("unchecked")
-	public <E> Class<E> getEntityClass(E entity) throws DataAccessException {   
+	public Class<?> getEntityClass(Object entity) throws DataAccessException {   
 		
 		
 		try {
@@ -141,7 +142,7 @@ public class JpaManagerImpl implements JpaManager {
 				throw new Exception("Error: entity is null" );
 			}
 			
-			Class<E> entityClass=   (Class<E>) entity.getClass();
+			Class<?> entityClass=   entity.getClass();
 			
 			if (entity instanceof HibernateProxy) {   
 				
@@ -156,6 +157,53 @@ public class JpaManagerImpl implements JpaManager {
             throw new DataAccessException(DATACCESSEXCEPTION ,e);
 		}
 	}
+	
+	
+	
+	
+	/**
+	 * 
+	 * @param realClass
+	 * @param path
+	 * @return
+	 * @throws Exception this method doesn't have to be responsible to do a rollback
+	 */
+	public <E> Class<?> getClassFromPath(Class<E> realClass, String path) throws Exception{
+		
+		Class<?> classFromPath;
+		Class<?> nextClassOnPath;
+		if (path==null || path.trim().equals("")){
+			classFromPath = realClass;
+		}else{
+			String[] firstAttributeNameAndRemainingPath =Utils.getFirstAttributeNameAndRemainingPath(path);
+			String firstAttributeName = firstAttributeNameAndRemainingPath[0];
+			String remainingPath = firstAttributeNameAndRemainingPath[1];
+			Field field= realClass.getDeclaredField(firstAttributeName);
+			
+			if(Collection.class.isAssignableFrom(field.getType()) || List.class.isAssignableFrom(field.getType()) || Set.class.isAssignableFrom(field.getType()) || Map.class.isAssignableFrom(field.getType())){
+        		
+				nextClassOnPath = Utils.getGenericClass(field.getGenericType());
+        		if(nextClassOnPath==null){
+        			getLogger().error(ERROR);
+                    throw new Exception("Bags types attributes have to be generic types. class: "+realClass.getName()+" field: "+field.getName());
+        		}else{
+        			getLogger().trace(" class:"+realClass.getName()+" field: "+field.getName());
+        		}
+        	}else{
+        		/**
+        		 *  oneToOne or ManyToOne
+        		 */
+        		nextClassOnPath=field.getType();
+        	}
+			
+			classFromPath =  getClassFromPath(nextClassOnPath, remainingPath);
+		}
+        return classFromPath;
+    }
+	
+	
+	
+	
 	
 	
 }

@@ -1,6 +1,7 @@
 package com.github.alessandrocolantoni.mom.dao;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -127,7 +128,11 @@ public interface Dao  extends Serializable{
 	
 	public <E> List<E> searchValueInFields(Class<E> realClass, String[] pAttributeNames, Object value) throws DataAccessException;
 	
+	public <E> List<E> getCollectionOfStoredItemsNotInBean(Object pInstance, String pAttributeName) throws DataAccessException;
 	
+	public <E> List<E>  getCollectionOfStoredItemsInBean(Object pInstance, String pAttributeName) throws DataAccessException;
+
+	public  <E> List<E>  getStoredCollection(Object pInstance, String pAttributeName) throws DataAccessException;
 	
 	
 	

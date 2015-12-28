@@ -16,9 +16,6 @@ import javax.persistence.Entity;
 import javax.persistence.Id;
 import javax.persistence.Transient;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 public  class  EntityInfo<E> implements Serializable {
 
 	/**
@@ -28,7 +25,7 @@ public  class  EntityInfo<E> implements Serializable {
 	
 	
 	
-	private static Logger log = LoggerFactory.getLogger(EntityInfo.class.getName());
+	//private static Logger log = LoggerFactory.getLogger(EntityInfo.class.getName());
 
 
 	
