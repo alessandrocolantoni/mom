@@ -6,10 +6,7 @@ package com.github.alessandrocolantoni.mom.dao.impl;
 
 
 
-import it.aco.mandragora.query.LogicSqlCondition;
-
 import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -19,13 +16,8 @@ import java.util.Map;
 
 import javax.enterprise.context.Dependent;
 import javax.inject.Inject;
-import javax.persistence.EmbeddedId;
 import javax.persistence.EntityManager;
 import javax.persistence.EntityNotFoundException;
-import javax.persistence.ManyToMany;
-import javax.persistence.ManyToOne;
-import javax.persistence.OneToMany;
-import javax.persistence.OneToOne;
 import javax.persistence.Query;
 import javax.persistence.Transient;
 
@@ -41,6 +33,7 @@ import com.github.alessandrocolantoni.mom.dao.jpaManager.impl.EntityInfo;
 import com.github.alessandrocolantoni.mom.dao.logicConditionJqlBuilder.LogicConditionJqlBuilder;
 import com.github.alessandrocolantoni.mom.objectsQuery.javaObjectsQuery.JavaObjectsQuery;
 import com.github.alessandrocolantoni.mom.query.LogicCondition;
+import com.github.alessandrocolantoni.mom.query.LogicSqlCondition;
 
 @Dependent
 public class BaseJpaDao implements Dao {
@@ -344,12 +337,12 @@ public class BaseJpaDao implements Dao {
     }
 	
 	@Override
-	public <E> List<E> findCollectionByLogicCondition(String[]selectFields, Class<E> realClass, LogicCondition logicCondition) throws DataAccessException{
+	public <E,T> List<E> findCollectionByLogicCondition(String[]selectFields, Class<T> realClass, LogicCondition logicCondition) throws DataAccessException{
         return findCollectionByLogicCondition(null, selectFields, realClass, logicCondition, null, null, null, null);
     }
 	
 	@Override
-	public <E> List<E> findCollectionByLogicCondition(String[]selectFields, Class<E> realClass, LogicCondition logicCondition, String orderBy) throws DataAccessException{
+	public <E,T> List<E> findCollectionByLogicCondition(String[]selectFields, Class<T> realClass, LogicCondition logicCondition, String orderBy) throws DataAccessException{
         return findCollectionByLogicCondition(null, selectFields, realClass, logicCondition, orderBy, null, null, null);
     }
 	
@@ -359,17 +352,17 @@ public class BaseJpaDao implements Dao {
     }
 	
 	@Override
-	public <E> List<E> findCollectionByLogicCondition(Boolean distinct, String[]selectFields, Class<E> realClass, LogicCondition logicCondition, String orderBy) throws DataAccessException{
+	public <E,T> List<E> findCollectionByLogicCondition(Boolean distinct, String[]selectFields, Class<T> realClass, LogicCondition logicCondition, String orderBy) throws DataAccessException{
         return findCollectionByLogicCondition(distinct, selectFields, realClass, logicCondition, orderBy, null, null, null);
     }
 	
 	@Override
-	public <E> List<E> findCollectionByLogicCondition(Boolean distinct,String[] selectFields, Class<E> realClass, LogicCondition logicCondition, String orderBy,Integer firstResult, Integer maxResults) throws DataAccessException{
+	public <E,T> List<E> findCollectionByLogicCondition(Boolean distinct,String[] selectFields, Class<T> realClass, LogicCondition logicCondition, String orderBy,Integer firstResult, Integer maxResults) throws DataAccessException{
         return findCollectionByLogicCondition(distinct, selectFields, realClass, logicCondition, orderBy, null, firstResult, maxResults);
     }
 	
 	@Override
-	public <E> List<E> findCollectionByLogicCondition(String[] selectFields, Class<E> realClass, LogicCondition logicCondition, String orderBy,Integer firstResult, Integer maxResults) throws DataAccessException{
+	public <E,T> List<E> findCollectionByLogicCondition(String[] selectFields, Class<T> realClass, LogicCondition logicCondition, String orderBy,Integer firstResult, Integer maxResults) throws DataAccessException{
         return findCollectionByLogicCondition(null, selectFields, realClass, logicCondition, orderBy, null, firstResult, maxResults);
     }
 	
@@ -389,14 +382,14 @@ public class BaseJpaDao implements Dao {
     }
 	
 	@Override
-	public <E> List<E> findCollectionByLogicCondition(Boolean distinct, String[]selectFields, Class<E> realClass, LogicCondition logicCondition) throws DataAccessException{
+	public <E,T> List<E> findCollectionByLogicCondition(Boolean distinct, String[]selectFields, Class<T> realClass, LogicCondition logicCondition) throws DataAccessException{
         return findCollectionByLogicCondition(distinct, selectFields,  realClass,  logicCondition, null, null, null, null);
     }
 	
 	
 	@Override
-	public <E> List<E> findCollectionByLogicCondition(Boolean distinct,String[] selectFields, Class<E> realClass, LogicCondition logicCondition, String orderBy,String[] groupBy, Integer firstResult, Integer maxResults) throws DataAccessException{
-        List<E> result;
+	public <E,T> List<E> findCollectionByLogicCondition(Boolean distinct,String[] selectFields, Class<T> realClass, LogicCondition logicCondition, String orderBy,String[] groupBy, Integer firstResult, Integer maxResults) throws DataAccessException{
+        List<E> result = new ArrayList<E>();
         try{
         	Query query = logicConditionJqlBuilder.createQuery(distinct,selectFields, realClass, logicCondition, orderBy, groupBy);
         	jpaManager.setFirstAndMaxResults(query, firstResult, maxResults);
@@ -622,21 +615,43 @@ public class BaseJpaDao implements Dao {
 	public <E> List<E> getCollectionOfStoredItemsNotInBean(Object pInstance, String pAttributeName) throws DataAccessException{
 		List<E> result = new ArrayList<E>();
         try {
+        	PropertyUtilsBean propertyUtilsBean = BeanUtilsBean.getInstance().getPropertyUtils();
         	
-        	result=getCollectionOfStoredItemsInOrNotInBean( pInstance,  pAttributeName, true);
-
+        	@SuppressWarnings("unchecked")
+			Collection<E> pAttributeCollection = (Collection<E>) propertyUtilsBean.getProperty(pInstance, pAttributeName);
+        	
+        	
+    		Class<?> pInstanceClass =  jpaManager.getEntityClass(pInstance);
+        	
+        	LogicSqlCondition logicSqlCondition = new LogicSqlCondition(pAttributeName,"NOT IN",pAttributeCollection); 
+        	
+        	result = findCollectionByLogicCondition(new String[]{pAttributeName}, pInstanceClass, logicSqlCondition);
+ 
 		} catch (Exception e) {
 			getLogger().error(ERROR);
             throw new DataAccessException(DATACCESSEXCEPTION ,e);
         }
         return result;
 	}
+	
+	
 	@Override
 	public <E> List<E>  getCollectionOfStoredItemsInBean(Object pInstance, String pAttributeName) throws DataAccessException{
 		List<E> result = new ArrayList<E>();
         try {
-			
-        	result=getCollectionOfStoredItemsInOrNotInBean( pInstance,  pAttributeName, false);
+        	PropertyUtilsBean propertyUtilsBean = BeanUtilsBean.getInstance().getPropertyUtils();
+        	
+        	@SuppressWarnings("unchecked")
+			Collection<E> pAttributeCollection = (Collection<E>) propertyUtilsBean.getProperty(pInstance, pAttributeName);
+        	
+        	
+    		Class<?> pInstanceClass =  jpaManager.getEntityClass(pInstance);
+        	
+        	LogicSqlCondition logicSqlCondition = new LogicSqlCondition(pAttributeName,"IN",pAttributeCollection); 
+        	
+        	result = findCollectionByLogicCondition(new String[]{pAttributeName}, pInstanceClass, logicSqlCondition);
+        	
+        	//result=getCollectionOfStoredItemsInOrNotInBean( pInstance,  pAttributeName, false);
 
 		} catch (Exception e) {
 			getLogger().error(ERROR);
@@ -645,67 +660,10 @@ public class BaseJpaDao implements Dao {
         return result;
 	 }
 	
-	private <EpAttribute,EpInstance> List<EpAttribute> getCollectionOfStoredItemsInOrNotInBean(EpInstance pInstance, String pAttributeName, boolean notInBean) throws Exception{
-		List<EpAttribute> result = new ArrayList<EpAttribute>();
-		if(pAttributeName==null || pAttributeName.trim().equals("")){
-			getLogger().error(ERROR);
-			throw new DataAccessException("pAttributeName can't be null or empty or blank chacarcters string");
-		}
-		
-		PropertyUtilsBean propertyUtilsBean = BeanUtilsBean.getInstance().getPropertyUtils();
-		
-		@SuppressWarnings("unchecked")
-		Class<EpInstance> pInstanceClass = (Class<EpInstance>) jpaManager.getEntityClass(pInstance);
-		@SuppressWarnings("unchecked")
-		Class<EpAttribute> pAttributeClass = (Class<EpAttribute>) jpaManager.getClassFromPath(pInstanceClass, pAttributeName);
-		
-		EntityInfo<EpAttribute> pAttributeEntityInfo =  new EntityInfo<EpAttribute>(pAttributeClass);
-		
-		Field pAttributeIdField = pAttributeEntityInfo.getIdField();
-		
-		@SuppressWarnings("unchecked")
-		Collection<EpAttribute> pAttributeCollection = (Collection<EpAttribute>) propertyUtilsBean.getProperty(pInstance, pAttributeName);
-		Collection<?> pAttributeIds = null;
-		if(pAttributeCollection!=null && !pAttributeCollection.isEmpty()){
-			pAttributeIds = javaObjectsQuery.selectFieldFromCollection(pAttributeCollection, pAttributeIdField.getName());
-		}
-		
-		String pAttributeIdFieldName=pAttributeIdField.getName(); 
-		
-		Map<String,Object> parameters = new HashMap<String,Object>();
-		parameters.put("param0", pInstance);
-		
-		String queryString ="SELECT bbb FROM "+pInstanceClass.getSimpleName()+" a join a."+pAttributeName+" bbb  WHERE a= :param0 " ;
-
-		if(pAttributeIds!=null){
-			if(notInBean){
-				queryString += "AND NOT EXISTS ";
-			}else{
-				queryString += "AND EXISTS ";
-			}
-				
-			queryString += "(SELECT 1 FROM "+pAttributeClass.getSimpleName()+" c WHERE ";
-			queryString+=" bbb."+pAttributeIdFieldName+" = c."+pAttributeIdFieldName+ " AND ";
-			queryString +="(";
-			Iterator<?> iterator = pAttributeIds.iterator();
-			int paramIndex=1;
-			while(iterator.hasNext()){
-				String param = "param"+paramIndex;
-				Object pAttributeId = iterator.next();
-				queryString+=" (c."+pAttributeIdFieldName+" = :"+param;
-				queryString +=")";
-				parameters.put(param, pAttributeId);
-				if(iterator.hasNext()){
-					queryString+=" OR ";
-				}
-				paramIndex++;
-			}
-			queryString +=") )";
-		}
-		
-		result = findCollectionByQueryString(queryString, parameters);
-        return result;
-	 }
+	
+	
+	
+	
 	
 	@Override
 	public  <E> List<E>  getStoredCollection(Object pInstance, String pAttributeName) throws DataAccessException{
