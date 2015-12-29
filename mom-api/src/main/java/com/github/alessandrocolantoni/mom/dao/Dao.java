@@ -2,8 +2,11 @@ package com.github.alessandrocolantoni.mom.dao;
 
 import java.io.Serializable;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+
+import org.apache.commons.beanutils.PropertyUtilsBean;
 
 import com.github.alessandrocolantoni.mom.query.LogicCondition;
 
@@ -15,7 +18,9 @@ public interface Dao  extends Serializable{
 
 	public <E> Object findObjectByLogicCondition(Class<E> realClass, LogicCondition logicCondition) throws DataAccessException;
 	
-	public <E> E findObjectByLogicCondition(String[]selectFields, Class<E> realClass, LogicCondition logicCondition, String orderBy) throws DataAccessException;
+	public <E,T> E findObjectByLogicCondition(String[]selectFields, Class<T> realClass, LogicCondition logicCondition, String orderBy) throws DataAccessException;
+	
+	public <E,T> E findObjectByLogicCondition(String[]selectFields, Class<T> realClass, LogicCondition logicCondition) throws DataAccessException;
 	
 	public <E> E findObjectByQueryString(String queryString) throws DataAccessException;
 	
@@ -130,9 +135,25 @@ public interface Dao  extends Serializable{
 
 	public  <E> List<E>  getStoredCollection(Object pInstance, String pAttributeName) throws DataAccessException;
 	
+	public  <E> E  getStoredSingleObject(Object pInstance, String pAttributeName) throws DataAccessException;
 	
+	public Object refresh(Object refreshVO) throws DataAccessException;
 	
+	public void refreshReference(Object pInstance, String pAttributeName) throws DataAccessException;
+
+	public void refreshAllReferences(Object pInstance) throws DataAccessException;
 	
+	public void refreshAllReferencesInCollection(Collection<? extends Object> valueObjectsCollection) throws DataAccessException;
+	
+	public <E> void retrieveReferenceInCollection(Collection<E> valueObjectsCollection, String pAttributeName) throws DataAccessException;
+  
+	public void retrieveUninitializedReference(Object pInstance, String pAttributeName) throws DataAccessException;
+
+	public void retrieveAllUninitializedReferences(Object pInstance) throws DataAccessException;
+
+	public void retrievePathReference(Object valueobjectOrCollection, String path) throws DataAccessException;
+
+	public void retrieveUninitializedPathReference(Object valueobjectOrCollection, String path) throws DataAccessException;
 	
 	
 	

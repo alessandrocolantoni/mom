@@ -6,7 +6,6 @@ package com.github.alessandrocolantoni.mom.dao.impl;
 
 
 
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -16,8 +15,13 @@ import java.util.Map;
 
 import javax.enterprise.context.Dependent;
 import javax.inject.Inject;
+import javax.persistence.EmbeddedId;
 import javax.persistence.EntityManager;
 import javax.persistence.EntityNotFoundException;
+import javax.persistence.ManyToMany;
+import javax.persistence.ManyToOne;
+import javax.persistence.OneToMany;
+import javax.persistence.OneToOne;
 import javax.persistence.Query;
 import javax.persistence.Transient;
 
@@ -29,7 +33,6 @@ import com.github.alessandrocolantoni.mom.common.Utils;
 import com.github.alessandrocolantoni.mom.dao.Dao;
 import com.github.alessandrocolantoni.mom.dao.DataAccessException;
 import com.github.alessandrocolantoni.mom.dao.jpaManager.JpaManager;
-import com.github.alessandrocolantoni.mom.dao.jpaManager.impl.EntityInfo;
 import com.github.alessandrocolantoni.mom.dao.logicConditionJqlBuilder.LogicConditionJqlBuilder;
 import com.github.alessandrocolantoni.mom.objectsQuery.javaObjectsQuery.JavaObjectsQuery;
 import com.github.alessandrocolantoni.mom.query.LogicCondition;
@@ -148,12 +151,29 @@ public class BaseJpaDao implements Dao {
     }
 	
 	@Override
-	public <E> E findObjectByLogicCondition(String[]selectFields, Class<E> realClass, LogicCondition logicCondition, String orderBy) throws DataAccessException{
+	public <E,T> E findObjectByLogicCondition(String[]selectFields, Class<T> realClass, LogicCondition logicCondition, String orderBy) throws DataAccessException{
         
         E result=null;
         try{
             
         	Query query = logicConditionJqlBuilder.createQuery(null, selectFields, realClass,  logicCondition, orderBy,  null);
+        	
+        	result = jpaManager.getSingleResult(query);
+        }catch (Exception e) {
+			getLogger().error(ERROR);
+            throw new DataAccessException(DATACCESSEXCEPTION ,e);
+        }
+        
+        return result;
+    }
+	
+	@Override
+	public <E,T> E findObjectByLogicCondition(String[]selectFields, Class<T> realClass, LogicCondition logicCondition) throws DataAccessException{
+        
+        E result=null;
+        try{
+            
+        	Query query = logicConditionJqlBuilder.createQuery(null, selectFields, realClass,  logicCondition, null,  null);
         	
         	result = jpaManager.getSingleResult(query);
         }catch (Exception e) {
@@ -661,23 +681,12 @@ public class BaseJpaDao implements Dao {
 	 }
 	
 	
-	
-	
-	
-	
 	@Override
 	public  <E> List<E>  getStoredCollection(Object pInstance, String pAttributeName) throws DataAccessException{
 		List<E> result = new ArrayList<E>();
         
         try {
-			if(pAttributeName==null || pAttributeName.trim().equals("")){
-			    getLogger().error(ERROR);
-				throw new DataAccessException("pAttributeName can't be null or empty or blank chacarcters string");
-			}
-			
-			Class<?> pInstanceClass = jpaManager.getEntityClass(pInstance);
-			
-			String queryString ="SELECT bbb FROM "+pInstanceClass.getSimpleName()+" a join a."+pAttributeName+" bbb  WHERE a= :param " ;
+        	String queryString = getStoredSingleObjectOrCollectionQueryString(pInstance, pAttributeName);
 			
 			result = findCollectionByQueryString(queryString, "param", pInstance);
 			
@@ -689,6 +698,269 @@ public class BaseJpaDao implements Dao {
         return result;
     }
 	
+	@Override
+	public  <E> E  getStoredSingleObject(Object pInstance, String pAttributeName) throws DataAccessException{
+		E result = null;
+        
+        try {
+        	String queryString = getStoredSingleObjectOrCollectionQueryString(pInstance, pAttributeName);
+			
+			result = findObjectByQueryString(queryString, "param", pInstance);
+			
+		} catch (Exception e) {
+			getLogger().error(ERROR);
+            throw new DataAccessException(DATACCESSEXCEPTION ,e);
+		}
+        
+        return result;
+    }
 	
+	private String getStoredSingleObjectOrCollectionQueryString(Object pInstance, String pAttributeName) throws Exception{
+		if(pAttributeName==null || pAttributeName.trim().equals("")){
+		    getLogger().error(ERROR);
+			throw new Exception("pAttributeName can't be null or empty or blank chacarcters string");
+		}
+		
+		Class<?> pInstanceClass = jpaManager.getEntityClass(pInstance);
+		
+		String queryString ="SELECT bbb FROM "+pInstanceClass.getSimpleName()+" a join a."+pAttributeName+" bbb  WHERE a= :param " ;
+		
+		return queryString;
+	}
+	
+	@Override
+	public Object refresh(Object refreshVO) throws DataAccessException {
+		try {
+
+			if(refreshVO!=null)getEntityManager().refresh(refreshVO);
+
+		} catch (EntityNotFoundException e) {
+			refreshVO=null;
+		} catch (Exception e) {
+			getLogger().error(ERROR);
+            throw new DataAccessException(DATACCESSEXCEPTION ,e);
+		}
+		return refreshVO;
+	}
+	
+	
+	@Override
+	public void refreshReference(Object pInstance, String pAttributeName) throws DataAccessException{
+        
+        try {
+        	Class<?> pInstanceClass= jpaManager.getEntityClass(pInstance);
+			
+			PropertyUtilsBean propertyUtilsBean = BeanUtilsBean.getInstance().getPropertyUtils();
+			
+			Object retrievedReference;
+			
+			if(Utils.getAnnotation(pInstanceClass,pAttributeName, OneToOne.class)!=null || Utils.getAnnotation(pInstanceClass,pAttributeName, ManyToOne.class)!=null){
+				
+				retrievedReference = getStoredSingleObject(pInstance, pAttributeName);
+				
+			}else  if(Utils.getAnnotation(pInstanceClass,pAttributeName, OneToMany.class)!=null || Utils.getAnnotation(pInstanceClass,pAttributeName, ManyToMany.class)!=null){
+				
+				retrievedReference = getStoredCollection(pInstance, pAttributeName);
+				
+			}else{
+				throw new DataAccessException("no annotation OneToOne, ManyToOne, OneToMany, ManyToMany found on "+pInstanceClass.getName()+"."+pAttributeName );
+			}
+			
+			propertyUtilsBean.setProperty(pInstance, pAttributeName,retrievedReference);
+		} catch (Exception e) {
+			getLogger().error(ERROR);
+            throw new DataAccessException(DATACCESSEXCEPTION ,e);
+		}
+    }
+	
+	@Override
+	public void refreshAllReferences(Object pInstance) throws DataAccessException{
+        
+        try {
+			PropertyUtilsBean propertyUtilsBean = BeanUtilsBean.getInstance().getPropertyUtils();
+			
+			Class<?> pInstanceClass=jpaManager.getEntityClass(pInstance);
+			
+			
+			Map<String, Object> describe = propertyUtilsBean.describe(pInstance);
+			Iterator<String> iterator = describe.keySet().iterator();
+			while (iterator.hasNext()){
+				String pAttributeName = iterator.next();
+				
+				
+				if(	Utils.getAnnotation(pInstanceClass,pAttributeName, OneToMany.class)!=null ||
+						Utils.getAnnotation(pInstanceClass,pAttributeName, ManyToMany.class)!=null ||
+								Utils.getAnnotation(pInstanceClass,pAttributeName, OneToOne.class)!=null || 
+										Utils.getAnnotation(pInstanceClass,pAttributeName, ManyToOne.class)!=null){
+					
+					refreshReference(pInstance, pAttributeName);
+				}
+				
+			}
+		} catch (Exception e) {
+			getLogger().error(ERROR);
+            throw new DataAccessException(DATACCESSEXCEPTION ,e);
+		}
+    }
+	
+	@Override
+	public void refreshAllReferencesInCollection(Collection<? extends Object> valueObjectsCollection) throws DataAccessException{
+         try {
+			if(valueObjectsCollection!=null){
+				Iterator<? extends Object> iterator = valueObjectsCollection.iterator();
+				while(iterator.hasNext()) {
+					refreshAllReferences(iterator.next());
+				}
+			}
+		} catch (Exception e) {
+			getLogger().error(ERROR);
+            throw new DataAccessException(DATACCESSEXCEPTION ,e);
+		}
+    }
+	
+	@Override
+	public <E> void retrieveReferenceInCollection(Collection<E> valueObjectsCollection, String pAttributeName) throws DataAccessException{
+        try {
+			if(valueObjectsCollection!=null){
+				Iterator<E> iterator = valueObjectsCollection.iterator();
+				while(iterator.hasNext()) {
+					refreshReference(iterator.next(),pAttributeName);
+				}
+			}
+		} catch (Exception e) {
+			getLogger().error(ERROR);
+            throw new DataAccessException(DATACCESSEXCEPTION ,e);
+		}
+    }
+	
+	/**
+	 * 
+	 * @param pInstance
+	 * @param pAttributeName
+	 * @throws Exception An Exception doesn't do rollback
+	 */
+	@Override
+	public void retrieveUninitializedReference(Object pInstance, String pAttributeName) throws DataAccessException{
+		try {
+			if (!jpaManager.inInitialized(pInstance,pAttributeName)){
+			    refreshReference(pInstance,pAttributeName);
+			}
+		} catch (Exception e) {
+			getLogger().error(ERROR);
+            throw new DataAccessException(DATACCESSEXCEPTION ,e);
+		}
+    }
+	
+	/**
+	 * 
+	 * @param pInstance
+	 * @throws Exception An Exception doesn't do rollback
+	 */
+	@Override
+	public void retrieveAllUninitializedReferences(Object pInstance) throws DataAccessException{
+		try {
+			PropertyUtilsBean propertyUtilsBean = BeanUtilsBean.getInstance().getPropertyUtils();
+			Class<?> pInstanceClass=jpaManager.getEntityClass(pInstance);
+
+			Map<String, Object> describe = propertyUtilsBean.describe(pInstance);
+			Iterator<String> iterator = describe.keySet().iterator();
+			while (iterator.hasNext()){
+				String pAttributeName = (String) iterator.next();
+				if(	Utils.getAnnotation(pInstanceClass,pAttributeName, OneToMany.class)!=null ||
+						Utils.getAnnotation(pInstanceClass,pAttributeName, ManyToMany.class)!=null ||
+								Utils.getAnnotation(pInstanceClass,pAttributeName, OneToOne.class)!=null || 
+										Utils.getAnnotation(pInstanceClass,pAttributeName, ManyToOne.class)!=null){
+					
+					retrieveUninitializedReference(pInstance, pAttributeName);
+				}
+				
+			}
+		} catch (Exception e) {
+			getLogger().error(ERROR);
+            throw new DataAccessException(DATACCESSEXCEPTION ,e);
+		}
+    }
+	
+	@Override
+	public void retrievePathReference(Object valueobjectOrCollection, String path) throws DataAccessException{
+        try {
+			if (path!=null && !path.trim().equals("") && valueobjectOrCollection!=null){
+			    if (Collection.class.isInstance(valueobjectOrCollection)){ 
+			        @SuppressWarnings("unchecked")
+					Iterator<? extends Object> iterator = ((Collection<? extends Object>) valueobjectOrCollection).iterator();
+			        while (iterator.hasNext()){
+			            Object valueobjectOrCollectionItem = iterator.next();
+			            retrievePathReferenceOnBean(valueobjectOrCollectionItem,  path);
+			        }
+			    } else {
+			    	Object valueobjectOrCollectionItem = valueobjectOrCollection;
+			    	retrievePathReferenceOnBean(valueobjectOrCollectionItem,  path);
+			    }
+			}
+		} catch (Exception e) {
+			getLogger().error(ERROR);
+            throw new DataAccessException(DATACCESSEXCEPTION ,e);
+        }
+    }
+	
+	
+	private void retrievePathReferenceOnBean(Object pInstance, String path) throws Exception{
+        
+		if (path!=null && !path.trim().equals("") && pInstance!=null){
+		    PropertyUtilsBean propertyUtilsBean = BeanUtilsBean.getInstance().getPropertyUtils();
+		    String[] firstAttributeNameAndRemainingPath = Utils.getFirstAttributeNameAndRemainingPath(path);
+		    String firstAttributeName=firstAttributeNameAndRemainingPath[0];
+		    String remainingPath=firstAttributeNameAndRemainingPath[1];
+		    	
+	    	Class<?> pInstanceClass = jpaManager.getEntityClass(pInstance);
+	    	if(Utils.getAnnotation(pInstanceClass, firstAttributeName, EmbeddedId.class)==null){
+            	refreshReference(pInstance, firstAttributeName);
+            }
+	    	Object firstAttributeValue = propertyUtilsBean.getProperty(pInstance,firstAttributeName);
+	    	retrievePathReference(firstAttributeValue,remainingPath);
+		}
+    }
+	
+	@Override
+	public void retrieveUninitializedPathReference(Object valueobjectOrCollection, String path) throws DataAccessException{
+        
+		try {
+			if (path!=null && !path.trim().equals("") && valueobjectOrCollection!=null){
+			    if (Collection.class.isInstance(valueobjectOrCollection)){ 
+			        @SuppressWarnings("unchecked")
+					Iterator<? extends Object> iterator = ((Collection<? extends Object>) valueobjectOrCollection).iterator();
+			        while (iterator.hasNext()){
+			            Object valueobjectOrCollectionItem = iterator.next();
+			            retrieveUninitializedPathReferenceOnBean(valueobjectOrCollectionItem,  path);
+			        }
+			    } else {
+			    	Object valueobjectOrCollectionItem = valueobjectOrCollection;
+			    	retrieveUninitializedPathReferenceOnBean(valueobjectOrCollectionItem,  path);
+			    }
+			}
+		} catch (Exception e) {
+			getLogger().error(ERROR);
+            throw new DataAccessException(DATACCESSEXCEPTION ,e);
+        }
+
+    }
+	
+	
+	private void retrieveUninitializedPathReferenceOnBean(Object pInstance, String path) throws Exception{
+        
+		if (path!=null && !path.trim().equals("") && pInstance!=null){
+		    PropertyUtilsBean propertyUtilsBean = BeanUtilsBean.getInstance().getPropertyUtils();
+		    String[] firstAttributeNameAndRemainingPath = Utils.getFirstAttributeNameAndRemainingPath(path);
+		    String firstAttributeName=firstAttributeNameAndRemainingPath[0];
+		    String remainingPath=firstAttributeNameAndRemainingPath[1];
+		    	
+	    	Class<?> pInstanceClass = jpaManager.getEntityClass(pInstance);
+	    	if(Utils.getAnnotation(pInstanceClass, firstAttributeName, EmbeddedId.class)==null){
+            	retrieveUninitializedReference(pInstance, firstAttributeName);
+            }
+	    	Object firstAttributeValue = propertyUtilsBean.getProperty(pInstance,firstAttributeName);
+	    	retrieveUninitializedPathReference(firstAttributeValue,remainingPath);
+		}
+    }
 	
 }

@@ -7,9 +7,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import javax.persistence.EntityManager;
 import javax.persistence.ManyToMany;
 import javax.persistence.NoResultException;
 import javax.persistence.OneToMany;
+import javax.persistence.PersistenceUnitUtil;
 import javax.persistence.Query;
 
 import org.hibernate.proxy.HibernateProxy;
@@ -31,19 +33,19 @@ public class JpaManagerImpl implements JpaManager {
 	
 	
 	
-	//private EntityManager entityManager;
+	private EntityManager entityManager;
 	private transient Logger logger;
 	
 	
 	private final String ERROR = ":::::Error:::::";
 	private final String DATACCESSEXCEPTION = ":::DataAccessException:::";
 	
-//	private EntityManager getEntityManager() {
-//		return entityManager;
-//	}
-//	public void setEntityManager(EntityManager entityManager) {
-//		this.entityManager = entityManager;
-//	}
+	private EntityManager getEntityManager() {
+		return entityManager;
+	}
+	public void setEntityManager(EntityManager entityManager) {
+		this.entityManager = entityManager;
+	}
 	private Logger getLogger() {
 		return logger;
 	}
@@ -168,6 +170,7 @@ public class JpaManagerImpl implements JpaManager {
 	 * @return
 	 * @throws Exception this method doesn't have to be responsible to do a rollback
 	 */
+	@Override
 	public <E> Class<?> getClassFromPath(Class<E> realClass, String path) throws Exception{
 		
 		Class<?> classFromPath;
@@ -201,8 +204,13 @@ public class JpaManagerImpl implements JpaManager {
         return classFromPath;
     }
 	
-	
-	
+	@Override
+	public boolean inInitialized (Object pInstance, String pAttributeName ) throws Exception{
+		PersistenceUnitUtil unitUtil = getEntityManager().getEntityManagerFactory().getPersistenceUnitUtil();
+		
+		return unitUtil.isLoaded(pInstance, pAttributeName);
+		
+	}
 	
 	
 	
