@@ -154,6 +154,18 @@ public interface Dao  extends Serializable{
 	public void retrievePathReference(Object valueobjectOrCollection, String path) throws DataAccessException;
 
 	public void retrieveUninitializedPathReference(Object valueobjectOrCollection, String path) throws DataAccessException;
+
+	public void remove(Object entity) throws DataAccessException;
+
+	public void removeCollection(Collection<? extends Object> entities) throws DataAccessException;
+
+	public void deleteItemsNotInCollectionsInPaths(Object parent, Collection<String> paths, boolean deleteManyToManyReference) throws DataAccessException;
+
+	public void deleteItemsNotInCollectionsInPaths(Object parent, Collection<String> paths) throws DataAccessException;
+
+	public void deletePathsCascade(Object parent, Collection<String> paths, boolean deleteManyToManyReference) throws DataAccessException;
+
+	public void deletePathsCascade(Object parent, Collection<String> paths) throws DataAccessException;
 	
 	
 	

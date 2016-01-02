@@ -1,20 +1,17 @@
 package com.github.alessandrocolantoni.mom.dao.impl;
 
-
-
-
-
-
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
 
 import javax.enterprise.context.Dependent;
 import javax.inject.Inject;
+import javax.persistence.Embeddable;
 import javax.persistence.EmbeddedId;
 import javax.persistence.EntityManager;
 import javax.persistence.EntityNotFoundException;
@@ -32,6 +29,7 @@ import org.slf4j.Logger;
 import com.github.alessandrocolantoni.mom.common.Utils;
 import com.github.alessandrocolantoni.mom.dao.Dao;
 import com.github.alessandrocolantoni.mom.dao.DataAccessException;
+import com.github.alessandrocolantoni.mom.dao.RelationTypeMaps;
 import com.github.alessandrocolantoni.mom.dao.jpaManager.JpaManager;
 import com.github.alessandrocolantoni.mom.dao.logicConditionJqlBuilder.LogicConditionJqlBuilder;
 import com.github.alessandrocolantoni.mom.objectsQuery.javaObjectsQuery.JavaObjectsQuery;
@@ -82,12 +80,7 @@ public class BaseJpaDao implements Dao {
 	private final String DATACCESSEXCEPTION = ":::DataAccessException:::";
 	
 	
-	private final static int ONE_TO_ONE = 0;
-	private final static int ONE_TO_N = 1;
-	private final static int M_TO_N = 2;
-	private final static int M_TO_ONE = 3;  
-	private final static int M_TO_N_INVERSE = 4;  
-	private final static int EMBEDDED_ID = 5; 
+	
     
     
     
@@ -842,7 +835,7 @@ public class BaseJpaDao implements Dao {
 	@Override
 	public void retrieveUninitializedReference(Object pInstance, String pAttributeName) throws DataAccessException{
 		try {
-			if (!jpaManager.inInitialized(pInstance,pAttributeName)){
+			if (!jpaManager.isInitialized(pInstance,pAttributeName)){
 			    refreshReference(pInstance,pAttributeName);
 			}
 		} catch (Exception e) {
@@ -963,4 +956,308 @@ public class BaseJpaDao implements Dao {
 		}
     }
 	
+	@Override
+	public void remove(Object entity) throws DataAccessException{
+		try {
+			if(getEntityManager().contains(entity)){
+				getEntityManager().remove(entity);
+			}else{
+				Object mergedEntity = getEntityManager().merge(entity);
+				getEntityManager().remove(mergedEntity);
+			}
+		}catch (Exception e) {
+        	getLogger().error(ERROR);
+            throw new DataAccessException(DATACCESSEXCEPTION ,e);
+        }
+	}
+	
+	@Override
+	public void removeCollection(Collection<? extends Object> entities) throws DataAccessException{
+        try {
+			if(entities!=null) {
+				Iterator<? extends Object> iterator = entities.iterator();
+				while (iterator.hasNext()){
+					Object entity = iterator.next();
+					remove(entity);
+				}
+			}
+		} catch (Exception e) {
+			getLogger().error(ERROR);
+            throw new DataAccessException(DATACCESSEXCEPTION ,e);
+		}
+    }
+	
+	
+	@Override
+	public void deleteItemsNotInCollectionsInPaths(Object parent, Collection<String> paths) throws DataAccessException{
+		try {
+			deleteItemsNotInCollectionsInPaths(parent, paths, true, false);
+		} catch (Exception e) {
+			getLogger().error(ERROR);
+            throw new DataAccessException(DATACCESSEXCEPTION ,e);
+		}
+	}
+	
+	@Override
+	public void deleteItemsNotInCollectionsInPaths(Object parent, Collection<String> paths,  boolean deleteManyToManyReference) throws DataAccessException{
+		try {
+			deleteItemsNotInCollectionsInPaths(parent, paths, true, deleteManyToManyReference);
+		} catch (Exception e) {
+			getLogger().error(ERROR);
+            throw new DataAccessException(DATACCESSEXCEPTION ,e);
+		}
+	}
+	
+	private void deleteItemsNotInCollectionsInPaths(Object parent, Collection<String> paths,  boolean pathsHasToBeSorted, boolean deleteManyToManyReference) throws Exception{
+        
+		if(paths!=null && !paths.isEmpty() &&parent!=null){
+		    
+		    RelationTypeMaps relationTypeMaps = jpaManager.buildRelationTypeMaps(parent, paths, pathsHasToBeSorted);
+	    	Class<?> parentClass = jpaManager.getEntityClass(parent);
+	        /**
+	         *  map for oneToOne and MToOne
+	         */
+	    	Map<String,List<String>> directReferenceMap = relationTypeMaps.getDirectReferenceMap(); 
+	         
+	    	Map<String,List<String>> oneToManyReferenceMap = relationTypeMaps.getOneToManyReferenceMap();
+
+	    	Map<String,List<String>> manyToManyReferenceMap = relationTypeMaps.getManyToManyReferenceMap();
+	         
+	    	Map<String,List<String>> manyToManyInverseReferenceMap = relationTypeMaps.getManyToManyInverseReferenceMap();
+		    
+	    	Map<String,List<String>> embeddedIdMap = relationTypeMaps.getEmbeddedIdMap(); 
+	    	
+	    	
+	    	
+	    	
+	    	processOneToManyNotInBeanDeletePathsCascade(parent, oneToManyReferenceMap, deleteManyToManyReference);
+		    
+	    	processM2NNotInBeanDeletePathsCascade(parent, manyToManyInverseReferenceMap, deleteManyToManyReference, JpaManager.M_TO_N_INVERSE);
+	    	
+	    	if(!parentClass.isAnnotationPresent(Embeddable.class)){
+	    		remove(parent);
+	    	}
+	    	
+	    	processM2NNotInBeanDeletePathsCascade(parent, manyToManyReferenceMap, deleteManyToManyReference, JpaManager.M_TO_N);
+	    	
+	    	processDirectReferenceDeletePathsCascade(parent, directReferenceMap,  deleteManyToManyReference, false);
+	    	
+	    	processDirectReferenceDeletePathsCascade(parent, embeddedIdMap,  deleteManyToManyReference, true);
+        
+        
+		}
+
+    }
+	
+		
+	private void processM2NNotInBeanDeletePathsCascade(Object parent, Map<String,List<String>> map, boolean deleteManyToManyReference,  int relationType) throws Exception{
+		
+		
+		Set<Entry<String,List<String>>> entrySet = map.entrySet();
+		for(Entry<String,List<String>> entry : entrySet){
+			processM2NNotInBeanDeletePathsCascade(parent, entry, deleteManyToManyReference, relationType);
+		}
+	}
+	
+	private void processM2NNotInBeanDeletePathsCascade(Object parent, Entry<String,List<String>> entry, boolean deleteManyToManyReference, int relationType) throws Exception{
+		
+		String firstAttributeName = entry.getKey();
+	    
+	    List<String> subPaths = entry.getValue();
+	    
+	    Collection<?> notInBeanReferencedEntities = getCollectionOfStoredItemsNotInBean(parent, firstAttributeName);
+	    
+	    processM2NDeletePathsCascade(parent,firstAttributeName,notInBeanReferencedEntities,  subPaths, deleteManyToManyReference, relationType);
+	    
+	}
+	
+	private void processOneToManyNotInBeanDeletePathsCascade(Object parent, Map<String,List<String>> map, boolean deleteManyToManyReference) throws Exception{
+		Set<Entry<String,List<String>>> entrySet = map.entrySet();
+		for(Entry<String,List<String>> entry : entrySet){
+			processOneToManyNotInBeanDeletePathsCascade(parent, entry, deleteManyToManyReference);
+		}
+	}
+	
+	private void processOneToManyNotInBeanDeletePathsCascade(Object parent, Entry<String,List<String>> entry, boolean deleteManyToManyReference) throws Exception{
+		
+	    String firstAttributeName = entry.getKey();
+	    
+	    List<String> subPaths = entry.getValue();
+        
+	    Collection<?> notInBeanReferencedEntities = getCollectionOfStoredItemsNotInBean(parent, firstAttributeName);
+       
+    	for(Object child:notInBeanReferencedEntities){
+    		deletePathsCascade(child,subPaths,Boolean.FALSE,deleteManyToManyReference);
+    	}
+	}
+	
+	@Override
+	public void deletePathsCascade(Object parent, Collection<String> paths) throws DataAccessException{
+		try {
+			deletePathsCascade(parent, paths, true, false);
+		} catch (Exception e) {
+			getLogger().error(ERROR);
+            throw new DataAccessException(DATACCESSEXCEPTION ,e);
+		}
+	}
+	
+	@Override
+	public void deletePathsCascade(Object parent, Collection<String> paths, boolean deleteManyToManyReference) throws DataAccessException{
+		try {
+			deletePathsCascade(parent, paths, true, deleteManyToManyReference);
+		} catch (Exception e) {
+			getLogger().error(ERROR);
+            throw new DataAccessException(DATACCESSEXCEPTION ,e);
+		}
+	}
+	
+	private void deletePathsCascade(Object parent, Collection<String> paths,boolean  pathsHasToBeSorted,boolean deleteManyToManyReference) throws Exception{
+		if( parent != null){
+
+		    if (paths == null || paths.isEmpty()){
+		        remove(parent);
+		    }else{
+		    	RelationTypeMaps relationTypeMaps = jpaManager.buildRelationTypeMaps(parent, paths, pathsHasToBeSorted);
+		    	Class<?> parentClass = jpaManager.getEntityClass(parent);
+		        /**
+		         *  map for oneToOne and MToOne
+		         */
+		    	Map<String,List<String>> directReferenceMap = relationTypeMaps.getDirectReferenceMap(); 
+		         
+		    	Map<String,List<String>> oneToManyReferenceMap = relationTypeMaps.getOneToManyReferenceMap();
+
+		    	Map<String,List<String>> manyToManyReferenceMap = relationTypeMaps.getManyToManyReferenceMap();
+		         
+		    	Map<String,List<String>> manyToManyInverseReferenceMap = relationTypeMaps.getManyToManyInverseReferenceMap();
+		         
+		    	Map<String,List<String>> embeddedIdMap = relationTypeMaps.getEmbeddedIdMap(); 
+		    	
+		    	processOneToManyDeletePathsCascade(parent, oneToManyReferenceMap, deleteManyToManyReference);
+		       
+		    	processM2NDeletePathsCascade(parent, manyToManyInverseReferenceMap,  deleteManyToManyReference, JpaManager.M_TO_N_INVERSE);
+		        
+		    	if(!parentClass.isAnnotationPresent(Embeddable.class)){
+		    		remove(parent);
+		    	}
+
+		    	processM2NDeletePathsCascade(parent, manyToManyReferenceMap,  deleteManyToManyReference,JpaManager.M_TO_N);
+		        
+		    	processDirectReferenceDeletePathsCascade(parent, directReferenceMap,  deleteManyToManyReference, false);
+		    	
+		    	processDirectReferenceDeletePathsCascade(parent, embeddedIdMap,  deleteManyToManyReference, true);
+		    }
+		}
+    }
+    	
+	private void processM2NDeletePathsCascade(Object parent, Map<String,List<String>> map, boolean deleteManyToManyReference,  int relationType) throws Exception{
+		
+		
+		Set<Entry<String,List<String>>> entrySet = map.entrySet();
+		for(Entry<String,List<String>> entry : entrySet){
+			processM2NDeletePathsCascade(parent, entry, deleteManyToManyReference,  relationType);
+		}
+	}
+	
+	private void processM2NDeletePathsCascade(Object parent, Entry<String,List<String>> entry, boolean deleteManyToManyReference, int relationType) throws Exception{
+		
+		String firstAttributeName = entry.getKey();
+	    
+	    List<String> subPaths = entry.getValue();
+	    
+	    clearCollectionIfLoaded(parent,  firstAttributeName);
+		
+	    Collection<?> storedChildren = getStoredCollection(parent, firstAttributeName);
+	    
+	    processM2NDeletePathsCascade(parent,firstAttributeName,storedChildren,  subPaths, deleteManyToManyReference, relationType);
+	    
+	}
+	
+	private void processM2NDeletePathsCascade(Object parent,String firstAttributeName, Collection<?> childrenToDelete, Collection<String> subPaths, boolean deleteManyToManyReference, int relationType) throws Exception{
+		
+		PropertyUtilsBean propertyUtilsBean = BeanUtilsBean.getInstance().getPropertyUtils();
+		
+		String inverseManyToManyField = jpaManager.getInverseManyToManyField(parent, firstAttributeName);
+    	
+		for(Object child:childrenToDelete){
+    		
+    		/**
+    		 * remove parent from inverse collection if is inverted m2n or is initialized
+    		 */
+	    	if(inverseManyToManyField!=null){
+	    		if(JpaManager.M_TO_N_INVERSE == relationType || jpaManager.isInitialized(child, inverseManyToManyField)){
+    				Collection<?> inverseCollection = (Collection<?>) propertyUtilsBean.getProperty(child, inverseManyToManyField);
+					inverseCollection.remove(parent);
+    			}
+    		}
+    		
+    		/**
+    		 *  delete child
+    		 */
+	    	if(deleteManyToManyReference){
+    			deletePathsCascade(child, subPaths,Boolean.FALSE, deleteManyToManyReference);
+    		}
+    	}
+	}
+
+	
+	private void processOneToManyDeletePathsCascade(Object parent, Map<String,List<String>> map, boolean deleteManyToManyReference) throws Exception{
+		Set<Entry<String,List<String>>> entrySet = map.entrySet();
+		for(Entry<String,List<String>> entry : entrySet){
+			processOneToManyDeletePathsCascade(parent, entry, deleteManyToManyReference);
+		}
+	}
+	
+	private void processOneToManyDeletePathsCascade(Object parent, Entry<String,List<String>> entry, boolean deleteManyToManyReference) throws Exception{
+		
+		
+		
+	    String firstAttributeName = entry.getKey();
+	    
+	    List<String> subPaths = entry.getValue();
+        
+        Collection<?> storedChildren = getStoredCollection(parent, firstAttributeName);
+        clearCollectionIfLoaded(parent,  firstAttributeName);
+        
+       
+    	for(Object child:storedChildren){
+    		deletePathsCascade(child,subPaths,Boolean.FALSE,deleteManyToManyReference);
+    	}
+	}
+	
+	private void processDirectReferenceDeletePathsCascade(Object parent, Map<String,List<String>> map, boolean deleteManyToManyReference, boolean isEmbeddable) throws Exception{
+		Set<Entry<String,List<String>>> entrySet = map.entrySet();
+		for(Entry<String,List<String>> entry : entrySet){
+			processDirectReferenceDeletePathsCascade(parent, entry, deleteManyToManyReference, isEmbeddable);
+		}
+	}
+	
+	private void processDirectReferenceDeletePathsCascade(Object parent, Entry<String,List<String>> entry, boolean deleteManyToManyReference, boolean isEmbeddable) throws Exception{
+		PropertyUtilsBean propertyUtilsBean = BeanUtilsBean.getInstance().getPropertyUtils();
+		
+	    String firstAttributeName = entry.getKey();
+	    
+	    List<String> subPaths = entry.getValue();
+	    Object referencedObject;
+	    if(isEmbeddable){
+	    	
+	    	referencedObject = propertyUtilsBean.getProperty(parent, firstAttributeName);
+	    }else{
+	    	referencedObject = getStoredSingleObject(parent, firstAttributeName);
+	    }
+    	deletePathsCascade(referencedObject,subPaths,Boolean.FALSE,deleteManyToManyReference);
+	}
+	
+	
+	
+	
+	private void clearCollectionIfLoaded(Object parent,  String firstAttributeName) throws Exception{
+		PropertyUtilsBean propertyUtilsBean = BeanUtilsBean.getInstance().getPropertyUtils();
+		boolean isInitialized = jpaManager.isInitialized(parent, firstAttributeName);
+	    if(isInitialized){
+	    	Collection<?> children = (Collection<?>) propertyUtilsBean.getProperty(parent, firstAttributeName);
+			if(children!=null){
+				children.clear();
+			}
+	    }
+	}
 }
