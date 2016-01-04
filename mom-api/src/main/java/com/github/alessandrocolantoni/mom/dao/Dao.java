@@ -2,11 +2,8 @@ package com.github.alessandrocolantoni.mom.dao;
 
 import java.io.Serializable;
 import java.util.Collection;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-
-import org.apache.commons.beanutils.PropertyUtilsBean;
 
 import com.github.alessandrocolantoni.mom.query.LogicCondition;
 
@@ -166,6 +163,14 @@ public interface Dao  extends Serializable{
 	public void deletePathsCascade(Object parent, Collection<String> paths, boolean deleteManyToManyReference) throws DataAccessException;
 
 	public void deletePathsCascade(Object parent, Collection<String> paths) throws DataAccessException;
+
+	public Object merge(Object entity) throws DataAccessException;
+
+	public void mergeCollection(Collection<?> entities) throws DataAccessException;
+
+	public  void persist(Object entity) throws DataAccessException;
+
+	public void persistCollection(Collection<?> entities) throws DataAccessException;
 	
 	
 	

@@ -19,6 +19,7 @@ public interface JpaManager extends Serializable {
 	public final static int M_TO_ONE = 3;  
 	public final static int M_TO_N_INVERSE = 4;  
 	public final static int EMBEDDED_ID = 5; 
+	public final static int EMBEDDED = 6; 
 	
 	
 	public <E> List<E> getResultList(Query query) throws DataAccessException;
@@ -30,7 +31,7 @@ public interface JpaManager extends Serializable {
 	public <E> Class<?> getClassFromPath(Class<E> realClass, String path) throws Exception;
 	public boolean isInitialized(Object pInstance, String pAttributeName) throws Exception;
 	public <E> int getRelationType(Class<E> realClass, String pAttributeName) throws Exception;
-	public String getInverseManyToManyField(Object pInstance, String pAttributeName) throws Exception;
+	public String getOtherSideManyToManyField(Object pInstance, String pAttributeName) throws Exception;
 	public RelationTypeMaps buildRelationTypeMaps(Object parent, Collection<String> paths, boolean pathsHasToBeSorted) throws Exception;
 
 }

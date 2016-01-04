@@ -4,12 +4,13 @@ import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import javax.persistence.Embeddable;
+import javax.persistence.Embedded;
 import javax.persistence.EmbeddedId;
 import javax.persistence.EntityManager;
 import javax.persistence.ManyToMany;
@@ -215,6 +216,7 @@ public class JpaManagerImpl implements JpaManager {
         return classFromPath;
     }
 	
+	// TODO make it for path
 	@Override
 	public boolean isInitialized (Object pInstance, String pAttributeName ) throws Exception{
 		PersistenceUnitUtil unitUtil = getEntityManager().getEntityManagerFactory().getPersistenceUnitUtil();
@@ -231,7 +233,7 @@ public class JpaManagerImpl implements JpaManager {
 		OneToOne oneToOne = null;
 		ManyToOne manyToOne = null ;
 		EmbeddedId embeddedId = null;
-		
+		Embedded embedded = null;
 		
 		if(manyToMany==null){
 			oneToMany = (OneToMany) Utils.getAnnotation(realClass, pAttributeName, OneToMany.class);   
@@ -242,7 +244,12 @@ public class JpaManagerImpl implements JpaManager {
 					if(oneToOne == null){
 						embeddedId = (EmbeddedId)Utils.getAnnotation(realClass, pAttributeName, EmbeddedId.class);
 						if(embeddedId==null){
-							throw new Exception("Error: pAttributeName  is no ManyToOne, no OneToMnay, no OneToOne, no ManyToMany, no EmbeddedId " );
+							embedded = (Embedded)Utils.getAnnotation(realClass, pAttributeName, Embedded.class);
+							if(embedded == null){
+								throw new Exception("Error: pAttributeName  is no ManyToOne, no OneToMnay, no OneToOne, no ManyToMany, no EmbeddedId, no Embedded " );
+							}else{
+								relationType=EMBEDDED;
+							}
 						}else{
 							relationType=EMBEDDED_ID;
 						}
@@ -268,27 +275,44 @@ public class JpaManagerImpl implements JpaManager {
 	}
 	
 	@Override
-	public String getInverseManyToManyField(Object pInstance, String pAttributeName) throws Exception{
-    	String inverseManyToManyField=null;
+	public String getOtherSideManyToManyField(Object pInstance, String pAttributeName) throws Exception{
+    	String otherSideManyToManyField=null;
     	Class<?> pInstanceClass=getEntityClass(pInstance);
+    	boolean isEmbeddable = pInstanceClass.isAnnotationPresent(Embeddable.class);
+    	
 		ManyToMany manyToMany = (ManyToMany) Utils.getAnnotation(pInstanceClass,pAttributeName, ManyToMany.class);
 		if(manyToMany!=null){
 			if(!StringUtils.isEmpty(manyToMany.mappedBy())){
-				inverseManyToManyField = manyToMany.mappedBy();
+				otherSideManyToManyField = manyToMany.mappedBy();
 			}else{
-				Class<?> targetEntityClass = manyToMany.targetEntity();
-				if(targetEntityClass==null){
-					targetEntityClass = Utils.getGenericClass(pInstanceClass.getDeclaredField(pAttributeName).getGenericType());
-				}
-				Field[] declaredFields = targetEntityClass.getDeclaredFields();
-				if(declaredFields!=null){
-					for(int i=0;i<declaredFields.length && inverseManyToManyField ==null;i++){
+				Class<?> targetClass = getClassFromPath(pInstanceClass, pAttributeName);
+				
+				Field[] otherSideDeclaredFields = targetClass.getDeclaredFields();
+				if(otherSideDeclaredFields!=null){
+					for(int i=0;i<otherSideDeclaredFields.length && otherSideManyToManyField ==null;i++){
 						
-						ManyToMany inverseManyToMany =declaredFields[i].getAnnotation(ManyToMany.class);
-						if(inverseManyToMany!=null){
-							Class<?> inverseManyToManyClass =  Utils.getGenericClass(declaredFields[i].getGenericType());
-							if(pInstanceClass.equals(inverseManyToManyClass)){
-								inverseManyToManyField =declaredFields[i].getName();
+						ManyToMany otherSideManyToMany =otherSideDeclaredFields[i].getAnnotation(ManyToMany.class);
+						if(otherSideManyToMany!=null){
+							
+							String otherSideMappedBy = otherSideManyToMany.mappedBy();
+							/**
+							 * if we here, if the other side of ManyToMany exists, it must hold a mappedBy.
+							 * If not, it means that it doesn't exist the other side
+							 */
+							if(!StringUtils.isEmpty(otherSideMappedBy)){
+								Class<?> otherSideTargetClass = getClassFromPath(targetClass, otherSideDeclaredFields[i].getName());
+								
+								if(!isEmbeddable){ 
+									if(otherSideTargetClass.equals(pInstanceClass) && otherSideMappedBy.equals(pAttributeName)){
+										otherSideManyToManyField=otherSideDeclaredFields[i].getName();
+									}
+								}else{
+									String[] otherSideMappedByPath = Utils.getFirstAttributeNameAndRemainingPath(otherSideMappedBy);
+									Class<?> embeddableClass  = getClassFromPath(otherSideTargetClass, otherSideMappedByPath[0]);
+									if(embeddableClass.equals(pInstanceClass) && otherSideMappedByPath[1].equals(pAttributeName)){
+										otherSideManyToManyField=otherSideDeclaredFields[i].getName();
+									}
+								}
 							}
 							
 						}
@@ -296,7 +320,7 @@ public class JpaManagerImpl implements JpaManager {
 				}
 			}
 		}
-    	return inverseManyToManyField;
+    	return otherSideManyToManyField;
     }
 	
 	@Override
@@ -370,6 +394,7 @@ public class JpaManagerImpl implements JpaManager {
                     case ONE_TO_ONE : 			directReferenceMap.put(firstAttributeName,subPaths); break;
                     case M_TO_ONE : 			directReferenceMap.put(firstAttributeName,subPaths); break;
                     case EMBEDDED_ID : 			embeddedIdMap.put(firstAttributeName,subPaths); break;
+                    case EMBEDDED : 			embeddedIdMap.put(firstAttributeName,subPaths); break;
                     case ONE_TO_N: 				oneToManyReferenceMap.put(firstAttributeName,subPaths);break;
                     case M_TO_N:  				manyToManyReferenceMap.put(firstAttributeName,subPaths);break;
                     case M_TO_N_INVERSE:  		manyToManyInverseReferenceMap.put(firstAttributeName,subPaths);break;
