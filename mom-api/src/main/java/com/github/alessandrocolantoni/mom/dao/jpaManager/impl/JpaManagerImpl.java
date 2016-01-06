@@ -216,13 +216,13 @@ public class JpaManagerImpl implements JpaManager {
         return classFromPath;
     }
 	
-	// TODO make it for path
+	
 	@Override
 	public boolean isInitialized (Object pInstance, String pAttributeName ) throws Exception{
 		PersistenceUnitUtil unitUtil = getEntityManager().getEntityManagerFactory().getPersistenceUnitUtil();
-		
-		return unitUtil.isLoaded(pInstance, pAttributeName);
-		
+		String dotSplitpAttributeName[] = Utils.getFirstAttributeNameAndRemainingPath(pAttributeName);
+		boolean isInitialized = unitUtil.isLoaded(pInstance, dotSplitpAttributeName[0]);
+		return isInitialized;
 	}
 	
 	public <E> int getRelationType(Class<E> realClass, String pAttributeName) throws Exception{
