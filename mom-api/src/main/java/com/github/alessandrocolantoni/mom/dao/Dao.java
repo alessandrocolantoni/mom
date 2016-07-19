@@ -7,7 +7,7 @@ import java.util.Map;
 
 import com.github.alessandrocolantoni.mom.query.LogicCondition;
 
-public interface Dao  extends Serializable  {
+public interface Dao  extends Serializable    {
 
 	public  <E> E findByPrimaryKey(Class<E> realClass, Object pkValue) throws DataAccessException;
 
