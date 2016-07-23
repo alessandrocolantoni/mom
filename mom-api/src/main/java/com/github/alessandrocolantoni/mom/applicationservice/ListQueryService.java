@@ -124,6 +124,27 @@ public interface ListQueryService extends Serializable {
 
 
 	/**
+	 * 
+	 * @param collection
+	 * @param properties
+	 * @param values
+	 * @return
+	 * @throws Exception
+	 */
+	public <T> List<T>  selectWhereFieldsLessThan(Collection<T> collection, String[] properties, Object[] values) throws Exception;
+	
+	/**
+	 * 
+	 * @param collection
+	 * @param property
+	 * @param value
+	 * @return
+	 * @throws Exception
+	 */
+	public <T> List<T> selectWhereFieldLessThan(Collection<T> collection, String property, Object value) throws Exception;
+
+	
+	/**
      * This method returns a new collection holding the elements of <code>collection</code> which attribute <code>property</code> assumes one of the
      * values in the input array parameter <code>values</code>. So each element of <code>collection</code> must have an attribute with name as specified by
      * the input string parameter <code>property</code>,
@@ -139,6 +160,36 @@ public interface ListQueryService extends Serializable {
      * @throws Exception - if some element of <code>collection</code> don't have an attribute named  <code>property</code>
      */
 	public <T> List<T> selectWhereFieldIn(Collection<T> collection, String property, Object[] values) throws Exception;
+
+	/**
+     * Return an element of collection whose property named field has value value. If more than such an element exists it's no determined which one is returned
+     * if such an element doesn't exist return null;
+     * If collection is null or empty return null.
+     * @param <E>
+     * @param collection: collection where the element will be searched in
+     * @param field: property of colelction's element that has to have value value
+     * @param value: value of property field that must have the collection's element to be returned
+     * @return an element of collection whose property named field has value value
+     * @throws IllegalAccessException
+     */
+	public <T, E> T findInCollection(Collection<T> collection, Class<T> beanClass, String field, E value) throws Exception;
+
+	
+	/**
+	 * 
+	 * @param list
+	 * @param beanClass
+	 * @param field
+	 * @param value
+	 * @return
+	 * @throws Exception
+	 */
+	public <T, E> T findInOrderedCollection(List<T> list, Class<T> beanClass, String field, E value) throws Exception;
+
+
+	
+	
+
 	
 	
 }

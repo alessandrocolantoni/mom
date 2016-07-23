@@ -26,7 +26,6 @@ import org.apache.commons.beanutils.BeanUtilsBean;
 import org.apache.commons.beanutils.PropertyUtilsBean;
 import org.slf4j.Logger;
 
-import com.github.alessandrocolantoni.mom.applicationservice.ListQueryService;
 import com.github.alessandrocolantoni.mom.common.Utils;
 import com.github.alessandrocolantoni.mom.dao.Dao;
 import com.github.alessandrocolantoni.mom.dao.DataAccessException;
@@ -51,8 +50,7 @@ public class BaseJpaDao implements Dao {
 	@Inject 
 	private JpaManager jpaManager;
 	
-	@Inject
-	private ListQueryService listQueryService;
+	
 	
 //	protected abstract Logger getLogger();
 //	protected abstract EntityManager getEntityManager(); 
