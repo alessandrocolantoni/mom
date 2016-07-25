@@ -13,6 +13,11 @@
 			<artifactId>jboss-javaee-all-6.0</artifactId>
 		</dependency>
 		<dependency>
+   			<groupId>org.jboss.spec</groupId>
+   			<artifactId>jboss-javaee-6.0</artifactId>
+   			<type>pom</type>
+    	</dependency>
+		<dependency>
       			<groupId>org.slf4j</groupId>
       			<artifactId>slf4j-api</artifactId>
    		</dependency>
@@ -40,6 +45,14 @@
     		<groupId>org.jboss.arquillian.junit</groupId>
     		<artifactId>arquillian-junit-container</artifactId>
     		<scope>test</scope>
+		</dependency>
+		<dependency>
+		    <groupId>org.jboss.arquillian.container</groupId>
+		    <artifactId>arquillian-weld-ee-embedded-1.1</artifactId>
+		</dependency>
+		<dependency>
+		    <groupId>org.jboss.weld</groupId>
+		    <artifactId>weld-core</artifactId>
 		</dependency>
    		<dependency>
             <groupId>junit</groupId>
