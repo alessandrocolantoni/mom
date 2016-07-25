@@ -17,6 +17,10 @@
       			<artifactId>slf4j-api</artifactId>
    		</dependency>
    		<dependency>
+		    <groupId>org.slf4j</groupId>
+		    <artifactId>slf4j-simple</artifactId>
+		</dependency>
+   		<dependency>
 			<groupId>commons-beanutils</groupId>
 			<artifactId>commons-beanutils</artifactId>
 		</dependency>
@@ -32,6 +36,15 @@
 			<groupId>org.hibernate</groupId>
 		    <artifactId>hibernate-search</artifactId>
    		</dependency>
+   		<dependency>
+    		<groupId>org.jboss.arquillian.junit</groupId>
+    		<artifactId>arquillian-junit-container</artifactId>
+    		<scope>test</scope>
+		</dependency>
+   		<dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+        </dependency>
   	</dependencies>
 </project>
 
