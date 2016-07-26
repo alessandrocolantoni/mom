@@ -1,11 +1,12 @@
 package com.github.alessandrocolantoni.mom.applicationservice.impl;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.*;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import javax.inject.Inject;
+
 
 import org.jboss.arquillian.container.test.api.Deployment;
 import org.jboss.arquillian.junit.Arquillian;
@@ -33,37 +34,59 @@ public class ListQueryServiceImplTest {
     }
 	
 	@Test
-	public void selectFieldFromCollectionTest(){
+	public void selectFieldFromCollection(){
 		try {
-			CarDTO car1 = new CarDTO();
-			car1.setBrand("volkswagen");
-			
-			CarDTO car2 = new CarDTO();
-			car2.setBrand("volkswagen");
-			
-			CarDTO car3 = new CarDTO();
-			car3.setBrand("audi");
-			
-			List<CarDTO> carDTOs = new ArrayList<CarDTO>();
-			
-			carDTOs.add(car1);
-			carDTOs.add(car2);
-			carDTOs.add(car3);
-		
-			
+			List<CarDTO> carDTOs = buildBasicCarList();
 		
 			List<String> carBrands = listQueryService.selectFieldFromCollection(carDTOs, "brand");
 			assertEquals("failure on carDTOs size", 3, carBrands.size());
+			assertEquals("failure on 1st element carBrands", "volkswagen", carBrands.get(0));
+			assertEquals("failure on 2nd element carBrands", "volkswagen", carBrands.get(1));
+			assertEquals("failure on 3rd element carBrands", "audi", carBrands.get(2));
 		} catch (Exception e) {
-			
 			Assert.fail(e.toString());
-			
 		}
-		
-		
+	}
+	
+	@Test
+	public void selectFieldFromNullCollection(){
+		try {
+			List<String> emptyList =  listQueryService.selectFieldFromCollection(null, "brand");
+			assertTrue("failure - should be true", emptyList.isEmpty());
+		} catch (Exception e) {
+			Assert.fail(e.toString());
+		}
 	}
 	
 	
+	@Test
+	public void selectBadFieldFromCollection(){
+		try {
+			List<CarDTO> carDTOs = buildBasicCarList();
+			listQueryService.selectFieldFromCollection(carDTOs, "badField");
+			
+		} catch (Exception e) {
+			assertEquals("failure on Exception of select badField", "java.lang.NoSuchMethodException: Unknown property 'badField' on class 'class com.github.alessandrocolantoni.mom.dto.CarDTO'",e.toString());
+			
+		}
+	}
 	
-	
+	private List<CarDTO> buildBasicCarList(){
+		List<CarDTO> carDTOs = new ArrayList<CarDTO>();
+		
+		CarDTO car1 = new CarDTO();
+		car1.setBrand("volkswagen");
+		
+		CarDTO car2 = new CarDTO();
+		car2.setBrand("volkswagen");
+		
+		CarDTO car3 = new CarDTO();
+		car3.setBrand("audi");
+		
+		carDTOs.add(car1);
+		carDTOs.add(car2);
+		carDTOs.add(car3);
+		
+		return carDTOs;
+	}
 }

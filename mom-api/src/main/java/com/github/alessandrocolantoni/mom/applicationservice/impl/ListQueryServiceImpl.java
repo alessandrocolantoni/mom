@@ -58,6 +58,12 @@ public class ListQueryServiceImpl implements ListQueryService {
     }
 	
 	@Override
+	public <T> List<T> selectDistinct(Collection<T> collection, String property) throws Exception{
+		return selectDistinct(collection, new String[]{property});
+
+    }
+	
+	@Override
 	public <T> void sortCollection(List<T> in_collection, String in_property) throws Exception {
 		Collections.sort(in_collection, new FieldComparator<T>(in_property));
     }

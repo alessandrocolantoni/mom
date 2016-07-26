@@ -34,6 +34,9 @@ public interface ListQueryService extends Serializable {
 	 */
 	public <T> List<T> selectDistinct(Collection<T> collection, String[] properties) throws Exception;
 
+	
+	public <T> List<T> selectDistinct(Collection<T> collection, String property) throws Exception;
+
 
 	/**
 	 * Elements of collection must have a field named <code>in_property</code>.</br>
@@ -186,6 +189,8 @@ public interface ListQueryService extends Serializable {
 	 */
 	public <T, E> T findInOrderedCollection(List<T> list, Class<T> beanClass, String field, E value) throws Exception;
 
+
+	
 
 	
 	
