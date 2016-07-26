@@ -8,6 +8,7 @@ import java.util.List;
 import javax.inject.Inject;
 
 
+
 import org.jboss.arquillian.container.test.api.Deployment;
 import org.jboss.arquillian.junit.Arquillian;
 import org.jboss.shrinkwrap.api.ShrinkWrap;
@@ -64,10 +65,21 @@ public class ListQueryServiceImplTest {
 		try {
 			List<CarDTO> carDTOs = buildBasicCarList();
 			listQueryService.selectFieldFromCollection(carDTOs, "badField");
-			
 		} catch (Exception e) {
 			assertEquals("failure on Exception of select badField", "java.lang.NoSuchMethodException: Unknown property 'badField' on class 'class com.github.alessandrocolantoni.mom.dto.CarDTO'",e.toString());
-			
+		}
+	}
+	
+	@Test
+	public void selectDistinct(){
+		try {
+			List<CarDTO> carDTOs = buildBasicCarList();
+			List<CarDTO> distinctCarDTOs = listQueryService.selectDistinct(carDTOs,"brand" ) ;
+			assertEquals("failure on carDTOs size", 2, distinctCarDTOs.size());
+			assertEquals("failure on 1st element carBrands", "volkswagen", distinctCarDTOs.get(0).getBrand());
+			assertEquals("failure on 2nd element carBrands", "audi", distinctCarDTOs.get(1).getBrand());
+		} catch (Exception e) {
+			Assert.fail(e.toString());
 		}
 	}
 	
@@ -76,9 +88,13 @@ public class ListQueryServiceImplTest {
 		
 		CarDTO car1 = new CarDTO();
 		car1.setBrand("volkswagen");
+		car1.setModel("golf");
+		car1.setEngine("1400 TD");
 		
 		CarDTO car2 = new CarDTO();
 		car2.setBrand("volkswagen");
+		car2.setModel("golf");
+		car2.setEngine("1600 TD");
 		
 		CarDTO car3 = new CarDTO();
 		car3.setBrand("audi");

@@ -50,13 +50,17 @@ public class ListQueryServiceImpl implements ListQueryService {
         	TreeSet<T> treeSet = new TreeSet<T>(new FieldComparator<T>(properties));
             Iterator<T> iterator =  collection.iterator();
             while(iterator.hasNext()){
-            	treeSet.add(iterator.next());
+            	T collectionElement = iterator.next();
+            	
+            	boolean added = treeSet.add(collectionElement);
+            	if(added){
+            		result.add(collectionElement);
+            	}
             }
-            result.addAll(treeSet);
         }
         return (List<T>) result;
     }
-	
+
 	@Override
 	public <T> List<T> selectDistinct(Collection<T> collection, String property) throws Exception{
 		return selectDistinct(collection, new String[]{property});
