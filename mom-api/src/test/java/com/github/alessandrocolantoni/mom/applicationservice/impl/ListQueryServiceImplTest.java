@@ -71,10 +71,23 @@ public class ListQueryServiceImplTest {
 	}
 	
 	@Test
-	public void selectDistinct(){
+	public void selectDistinctOneField(){
 		try {
 			List<CarDTO> carDTOs = buildBasicCarList();
 			List<CarDTO> distinctCarDTOs = listQueryService.selectDistinct(carDTOs,"brand" ) ;
+			assertEquals("failure on carDTOs size", 2, distinctCarDTOs.size());
+			assertEquals("failure on 1st element carBrands", "volkswagen", distinctCarDTOs.get(0).getBrand());
+			assertEquals("failure on 2nd element carBrands", "audi", distinctCarDTOs.get(1).getBrand());
+		} catch (Exception e) {
+			Assert.fail(e.toString());
+		}
+	}
+	
+	@Test
+	public void selectDistinctArrayField(){
+		try {
+			List<CarDTO> carDTOs = buildBasicCarList();
+			List<CarDTO> distinctCarDTOs = listQueryService.selectDistinct(carDTOs,new String[]{"brand", "model"} ) ;
 			assertEquals("failure on carDTOs size", 2, distinctCarDTOs.size());
 			assertEquals("failure on 1st element carBrands", "volkswagen", distinctCarDTOs.get(0).getBrand());
 			assertEquals("failure on 2nd element carBrands", "audi", distinctCarDTOs.get(1).getBrand());

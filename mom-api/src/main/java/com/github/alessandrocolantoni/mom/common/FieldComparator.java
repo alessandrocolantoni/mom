@@ -18,20 +18,24 @@ public class FieldComparator<T> implements Comparator<T>, Serializable{
 	private static final long serialVersionUID = 1372033447644172456L;
 	
 	
-	private String[] fieldArray;
+	private String[] fieldArray = new String[]{};
     
 	public FieldComparator (String[] fieldArray){
-        this.fieldArray=fieldArray;
+        if(fieldArray!=null){
+        	this.fieldArray=fieldArray;
+        }
     }
-    public FieldComparator (String field) throws Exception{
+    public FieldComparator (String field) {
         this.fieldArray =new String[1];
         this.fieldArray[0]=field;
     }
     public FieldComparator (List<String> fieldList) throws Exception{
-        fieldArray=new String[fieldList.size()];
-        for(int i=0;i<fieldList.size();i++){
-            fieldArray[i]=fieldList.get(i);
-        }
+    	if(fieldList!=null){
+	        fieldArray=new String[fieldList.size()];
+	        for(int i=0;i<fieldList.size();i++){
+	            fieldArray[i]=fieldList.get(i);
+	        }
+    	}
     }
     
     @SuppressWarnings({ "rawtypes", "unchecked" })
@@ -64,11 +68,9 @@ public class FieldComparator<T> implements Comparator<T>, Serializable{
 			    }else if(propertyValueO2==null){//null is the biggest value;
 			        compare=-1;
 			    }else{
-
 			        compare =  propertyValueO1.compareTo(propertyValueO2);
 			    }
 			    
-
 			}
 			return compare;
 		} catch (Exception e) {

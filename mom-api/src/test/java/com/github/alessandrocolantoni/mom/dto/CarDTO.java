@@ -14,6 +14,10 @@ public class CarDTO implements Serializable {
 	private String engine;
 	private String gear;
 	
+	private GroupDTO groupDTO;
+	private Integer year;
+	
+	
 	
 	public String getBrand() {
 		return brand;
@@ -39,6 +43,20 @@ public class CarDTO implements Serializable {
 	public void setGear(String gear) {
 		this.gear = gear;
 	}
+	public GroupDTO getGroupDTO() {
+		return groupDTO;
+	}
+	public void setGroupDTO(GroupDTO groupDTO) {
+		this.groupDTO = groupDTO;
+	}
+	public Integer getYear() {
+		return year;
+	}
+	public void setYear(Integer year) {
+		this.year = year;
+	}
+	
+	
 	
 	
 	
