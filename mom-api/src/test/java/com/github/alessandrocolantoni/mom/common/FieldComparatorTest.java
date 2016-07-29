@@ -167,10 +167,8 @@ public class FieldComparatorTest implements Serializable {
 	@Test
 	public void compareWithBadField(){
 		try {
-			CarDTO carDTO1 =  new CarDTO();
-			CarDTO carDTO2 =  new CarDTO();
 			FieldComparator<CarDTO> fieldComparator= new FieldComparator<CarDTO>("badField");
-			fieldComparator.compare(carDTO1, carDTO2);
+			fieldComparator.compare(new CarDTO(), new CarDTO());
 		} catch (Exception e) {
 			assertEquals("failure on Exception of compareWithBadField", "java.lang.RuntimeException: java.lang.NoSuchMethodException: Unknown property 'badField' on class 'class com.github.alessandrocolantoni.mom.dto.CarDTO'",e.toString());
 		}
